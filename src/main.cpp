@@ -5,13 +5,8 @@
 
 int main()
 {
-	std::cout << std::setprecision(20);
-
-	freopen("out.csv", "w", stdout);
-	for (double x = log(20); x < 709; x += 5)
-	{
-		Interval res = ReferenceW0(exp(x));
-
-		std::cout << x << ',' << res.inf << '\n';
-	}
+	double x = 2.5;
+	Interval result = ReferenceW0(x);
+	std::cout << std::setprecision(17);
+	std::cout << "W(" << x << ") = [" << result.inf << ", " << result.sup << "]\n";
 }
