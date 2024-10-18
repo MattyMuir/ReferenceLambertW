@@ -135,7 +135,7 @@ Interval ReferenceW0(double x)
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, true, W0Precision);
-	assert(ret.sup == std::nextafter(ret.inf, INFINITY));
+	assert(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY));
 
 	mpfr_clear(xMpfr);
 	mpfr_clear(low);
@@ -197,7 +197,7 @@ Interval ReferenceWm1(double x)
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, false, Wm1Precision);
-	assert(ret.sup == std::nextafter(ret.inf, INFINITY));
+	assert(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY));
 
 	mpfr_clear(xMpfr);
 	mpfr_clear(low);
