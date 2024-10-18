@@ -23,6 +23,18 @@ ReferenceW::ReferenceW()
 	mpfr_init2(yHighP0, 53);
 	mpfr_init2(yLowP1, 150);
 	mpfr_init2(yHighP1, 150);
+
+	mpfr_init2(expUp, 53);
+	mpfr_init2(expDown, 53);
+	mpfr_init2(wexpDown, 53);
+	mpfr_init2(wexpUp, 53);
+	mpfr_init2(numerator0, 53);
+	mpfr_init2(numerator1, 53);
+	mpfr_init2(wplus2, 53);
+	mpfr_init2(denominator1, 53);
+	mpfr_init2(frac1, 53);
+	mpfr_init2(denominator0, 53);
+	mpfr_init2(newW, 53);
 }
 
 ReferenceW::~ReferenceW()
@@ -38,6 +50,18 @@ ReferenceW::~ReferenceW()
 	mpfr_clear(yHighP0);
 	mpfr_clear(yLowP1);
 	mpfr_clear(yHighP1);
+
+	mpfr_clear(expUp);
+	mpfr_clear(expDown);
+	mpfr_clear(wexpDown);
+	mpfr_clear(wexpUp);
+	mpfr_clear(numerator0);
+	mpfr_clear(numerator1);
+	mpfr_clear(wplus2);
+	mpfr_clear(denominator1);
+	mpfr_clear(frac1);
+	mpfr_clear(denominator0);
+	mpfr_clear(newW);
 }
 
 Interval ReferenceW::W0(double x)
@@ -81,6 +105,13 @@ Interval ReferenceW::W0(double x)
 		// Clamp low above -1
 		if (mpfr_cmp_si(low, -1) < 0)
 			mpfr_set_si(low, -1, MPFR_RNDN);
+	}
+
+	// === Halley Iterations ===
+	for (size_t i = 0; i < 4; i++)
+	{
+		HalleyW0(low, xMpfr, low, false);
+		HalleyW0(high, xMpfr, high, true);
 	}
 
 	// === Bisection ===
@@ -210,4 +241,76 @@ Interval ReferenceW::Bisection(double x, mpfr_t low, mpfr_t high, bool increasin
 	double highD = mpfr_get_d(high, MPFR_RNDU);
 
 	return { lowD, highD };
+}
+
+void ReferenceW::HalleyW0(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper)
+{
+	/*
+	result			= w - numerator0 / denominator0
+	numerator0		= w e^w - x
+	denominator0	= e^w (w + 1) - numerator1 / denominator1
+	numerator1		= (w + 2)(w e^w - x)
+	denominator1	= 2w + 2
+
+	=== Upper Bound Case ===
+	- numerator0	is POSITIVE and needs to be rounded DOWN
+	- denominator0	is POSITIVE and needs to be rounded UP
+	- numerator1	is POSITIVE and needs to be rounded DOWN
+	- denominator1	is POSITIVE and needs to be rounded UP
+
+	=== Lower Bound Case ===
+	- numerator0	is NEGATIVE and needs to be rounded UP
+	- denominator0	is POSITIVE and needs to be rounded UP
+	- numerator1	is NEGATIVE and needs to be rounded DOWN
+	- denominator1	is POSITIVE and needs to be rounded DOWN
+	*/
+
+	mpfr_rnd_t rnd;
+
+	// expUp
+	mpfr_exp(expUp, w, MPFR_RNDU);
+
+	// expDown
+	mpfr_exp(expDown, w, MPFR_RNDD);
+
+	// wexpDown
+	mpfr_t& exp0 = (mpfr_cmp_ui(w, 0) > 0) ? expDown : expUp;
+	mpfr_mul(wexpDown, w, exp0, MPFR_RNDD);
+
+	// wexpUp
+	mpfr_t& exp1 = (mpfr_cmp_ui(w, 0) > 0) ? expUp : expDown;
+	mpfr_mul(wexpUp, w, exp1, MPFR_RNDU);
+
+	// numerator0
+	rnd = isUpper ? MPFR_RNDD : MPFR_RNDU;
+	mpfr_sub(numerator0, isUpper ? wexpDown : wexpUp, x, rnd);
+	
+	// numerator1
+	rnd = isUpper ? MPFR_RNDD : MPFR_RNDU;
+	mpfr_add_ui(wplus2, w, 2, rnd);
+
+	mpfr_sub(numerator1, wexpDown, x, MPFR_RNDD);
+	mpfr_mul(numerator1, numerator1, wplus2, MPFR_RNDD);
+
+	// denominator1
+	rnd = isUpper ? MPFR_RNDU : MPFR_RNDD;
+	mpfr_mul_2ui(denominator1, w, 1, rnd);
+	mpfr_add_ui(denominator1, denominator1, 2, rnd);
+
+	// frac1
+	mpfr_div(frac1, numerator1, denominator1, MPFR_RNDD);
+
+	// denominator0
+	mpfr_add_ui(denominator0, w, 1, MPFR_RNDU);
+	mpfr_mul(denominator0, denominator0, expUp, MPFR_RNDU);
+	mpfr_sub(denominator0, denominator0, frac1, MPFR_RNDU);
+
+	// newW
+	rnd = isUpper ? MPFR_RNDD : MPFR_RNDU;
+	mpfr_div(newW, numerator0, denominator0, rnd);
+	rnd = isUpper ? MPFR_RNDU : MPFR_RNDD;
+	mpfr_sub(newW, w, newW, rnd);
+
+	// Store result
+	mpfr_set(result, newW, MPFR_RNDN);
 }
