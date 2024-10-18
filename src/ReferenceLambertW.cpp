@@ -1,6 +1,9 @@
 #include "ReferenceLambertW.h"
 
 #include <cassert>
+#include <cfloat>
+#include <cmath>
+
 #include <iostream>
 #include <iomanip>
 
