@@ -82,9 +82,7 @@ Interval ReferenceW::W0(double x)
 	if (x > 3)
 	{
 		// low = ln(x) - ln(ln(x))
-		mpfr_log(temp0, xMpfr, MPFR_RNDD);
-
-		mpfr_log(temp1, xMpfr, MPFR_RNDU);
+		LogUpDown(temp0, temp1, xMpfr);
 		mpfr_log(temp1, temp1, MPFR_RNDU);
 
 		mpfr_sub(low, temp0, temp1, MPFR_RNDD);
@@ -180,15 +178,16 @@ ReferenceW::Sign ReferenceW::GetMidpointSign(double x, mpfr_t midpoint, bool use
 	mpfr_t& yLow = useHighPrec ? yLowP1 : yLowP0;
 	mpfr_t& yHigh = useHighPrec ? yHighP1 : yHighP0;
 
+	// Compute exp
+	ExpUpDown(yLow, yHigh, midpoint);
+	if (mpfr_cmp_ui(midpoint, 0) < 0)
+		mpfr_swap(yLow, yHigh);
+
 	// Compute yLow
-	mpfr_rnd_t rnd = (mpfr_cmp_ui(midpoint, 0) > 0) ? MPFR_RNDD : MPFR_RNDU;
-	mpfr_exp(yLow, midpoint, rnd);
 	mpfr_mul(yLow, yLow, midpoint, MPFR_RNDD);
 	mpfr_sub_d(yLow, yLow, x, MPFR_RNDD);
 
 	// Compute yHigh
-	rnd = (mpfr_cmp_ui(midpoint, 0) > 0) ? MPFR_RNDU : MPFR_RNDD;
-	mpfr_exp(yHigh, midpoint, rnd);
 	mpfr_mul(yHigh, yHigh, midpoint, MPFR_RNDU);
 	mpfr_sub_d(yHigh, yHigh, x, MPFR_RNDU);
 
@@ -267,11 +266,8 @@ void ReferenceW::HalleyW0(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper)
 
 	mpfr_rnd_t rnd;
 
-	// expUp
-	mpfr_exp(expUp, w, MPFR_RNDU);
-
-	// expDown
-	mpfr_exp(expDown, w, MPFR_RNDD);
+	// expUp and expDown
+	ExpUpDown(expDown, expUp, w);
 
 	// wexpDown
 	mpfr_t& exp0 = (mpfr_cmp_ui(w, 0) > 0) ? expDown : expUp;
@@ -288,7 +284,6 @@ void ReferenceW::HalleyW0(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper)
 	// numerator1
 	rnd = isUpper ? MPFR_RNDD : MPFR_RNDU;
 	mpfr_add_ui(wplus2, w, 2, rnd);
-
 	mpfr_sub(numerator1, wexpDown, x, MPFR_RNDD);
 	mpfr_mul(numerator1, numerator1, wplus2, MPFR_RNDD);
 
@@ -313,4 +308,18 @@ void ReferenceW::HalleyW0(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper)
 
 	// Store result
 	mpfr_set(result, newW, MPFR_RNDN);
+}
+
+void ReferenceW::LogUpDown(mpfr_t down, mpfr_t up, mpfr_t x)
+{
+	int isBelow = mpfr_log(down, x, MPFR_RNDD);
+	mpfr_set(up, down, MPFR_RNDN);
+	if (isBelow) mpfr_nextabove(up);
+}
+
+void ReferenceW::ExpUpDown(mpfr_t down, mpfr_t up, mpfr_t x)
+{
+	int isBelow = mpfr_exp(down, x, MPFR_RNDD);
+	mpfr_set(up, down, MPFR_RNDN);
+	if (isBelow) mpfr_nextabove(up);
 }

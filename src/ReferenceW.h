@@ -34,4 +34,6 @@ private:
 	Sign GetMidpointSign(double x, mpfr_t midpoint, bool useHighPrec);
 	Interval Bisection(double x, mpfr_t low, mpfr_t high, bool increasing);
 	void HalleyW0(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper);
+	static void LogUpDown(mpfr_t down, mpfr_t up, mpfr_t x);
+	static void ExpUpDown(mpfr_t down, mpfr_t up, mpfr_t x);
 };

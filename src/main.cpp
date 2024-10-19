@@ -19,20 +19,20 @@ void SpeedTest(size_t arrSize)
 		data.push_back(dist(gen));
 
 	// With repeated inits
-	TIMER(withInits);
+	TIMER(firstVersion);
 	double _0 = 0;
 	for (double d : data)
 		_0 += ReferenceW0(d).inf;
-	STOP_LOG(withInits);
+	STOP_LOG(firstVersion);
 
 	// Without repeated inits
 	ReferenceW evaluator;
 
-	TIMER(withoutInits);
+	TIMER(currentVersion);
 	double _1 = 0;
 	for (double d : data)
 		_1 += evaluator.W0(d).inf;
-	STOP_LOG(withoutInits);
+	STOP_LOG(currentVersion);
 
 	// Make sure evaluations are not optimized away (and the same)
 	std::cout << std::setprecision(20);
@@ -81,5 +81,5 @@ void Profiling(size_t arrSize, size_t numIter)
 
 int main()
 {
-	Profiling(1000, 100);
+	SpeedTest(10000);
 }
