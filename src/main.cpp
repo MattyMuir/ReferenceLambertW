@@ -14,7 +14,7 @@ void SpeedTest(size_t arrSize)
 	// Prepare test data
 	std::vector<double> data;
 	static std::mt19937_64 gen{ std::random_device{}() };
-	std::uniform_real_distribution<double> dist{ 10, 100 };
+	std::uniform_real_distribution<double> dist{ -0.3, 0 };
 	for (size_t i = 0; i < arrSize; i++)
 		data.push_back(dist(gen));
 
@@ -42,15 +42,15 @@ void SpeedTest(size_t arrSize)
 void EqualityTest()
 {
 	static std::mt19937_64 gen{ std::random_device{}() };
-	std::uniform_real_distribution<double> dist{ -0.3678794411714423, 1 };
+	std::uniform_real_distribution<double> dist{ -0.3678794411714423, 0 };
 
 	ReferenceW evaluator;
 	for (;;)
 	{
 		double x = dist(gen);
 
-		Interval slow = ReferenceW0(x);
-		Interval fast = evaluator.W0(x);
+		Interval slow = ReferenceWm1(x);
+		Interval fast = evaluator.Wm1(x);
 
 		if (slow.inf != fast.inf)
 		{
@@ -81,5 +81,5 @@ void Profiling(size_t arrSize, size_t numIter)
 
 int main()
 {
-	SpeedTest(10000);
+	SpeedTest(10'000);
 }
