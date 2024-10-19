@@ -22,7 +22,7 @@ void SpeedTest(size_t arrSize)
 	TIMER(firstVersion);
 	double _0 = 0;
 	for (double d : data)
-		_0 += ReferenceW0(d).inf;
+		_0 += ReferenceWm1(d).inf;
 	STOP_LOG(firstVersion);
 
 	// Without repeated inits
@@ -31,7 +31,7 @@ void SpeedTest(size_t arrSize)
 	TIMER(currentVersion);
 	double _1 = 0;
 	for (double d : data)
-		_1 += evaluator.W0(d).inf;
+		_1 += evaluator.Wm1(d).inf;
 	STOP_LOG(currentVersion);
 
 	// Make sure evaluations are not optimized away (and the same)

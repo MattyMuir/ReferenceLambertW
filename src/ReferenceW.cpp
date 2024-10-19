@@ -154,7 +154,7 @@ Interval ReferenceW::Wm1(double x)
 	mpfr_si_sub(high, -1, high, MPFR_RNDU);
 
 	// === Halley Iterations ===
-	for (size_t i = 0; i < 4; i++)
+	for (size_t i = 0; i < 3; i++)
 	{
 		HalleyWm1(low, xMpfr, low, false);
 		HalleyWm1(high, xMpfr, high, true);
