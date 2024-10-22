@@ -28,13 +28,15 @@ protected:
 
 public:
 	inline Timer()
-		: start(Clock::now()) {}
+		: start(Clock::now())
+	{
+	}
 
 	inline void Stop(bool log = false)
 	{
 		Time end = Clock::now();
 		elapsed = end - start;
-		if(log) Log();
+		if (log) Log();
 	}
 
 	inline void Log() const

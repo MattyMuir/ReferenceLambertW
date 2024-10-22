@@ -6,7 +6,6 @@
 #define TIMER_NPRINT
 #include "Timer.h"
 
-#include "ReferenceLambertW.h"
 #include "ReferenceW.h"
 
 void SpeedTest(size_t arrSize)
@@ -18,28 +17,21 @@ void SpeedTest(size_t arrSize)
 	for (size_t i = 0; i < arrSize; i++)
 		data.push_back(dist(gen));
 
-	// With repeated inits
-	TIMER(firstVersion);
-	double _0 = 0;
-	for (double d : data)
-		_0 += ReferenceWm1(d).inf;
-	STOP_LOG(firstVersion);
-
 	// Without repeated inits
 	ReferenceW evaluator;
 
 	TIMER(currentVersion);
-	double _1 = 0;
+	double _ = 0;
 	for (double d : data)
-		_1 += evaluator.Wm1(d).inf;
+		_ += evaluator.Wm1(d).inf;
 	STOP_LOG(currentVersion);
 
-	// Make sure evaluations are not optimized away (and the same)
+	// Make sure evaluations are not optimized away
 	std::cout << std::setprecision(20);
-	std::cout << _0 << '\n' << _1 << '\n';
+	std::cout << _ << '\n';
 }
 
-void EqualityTest()
+void Test()
 {
 	static std::mt19937_64 gen{ std::random_device{}() };
 	std::uniform_real_distribution<double> dist{ -0.3678794411714423, 0 };
@@ -47,16 +39,7 @@ void EqualityTest()
 	ReferenceW evaluator;
 	for (;;)
 	{
-		double x = dist(gen);
-
-		Interval slow = ReferenceWm1(x);
-		Interval fast = evaluator.Wm1(x);
-
-		if (slow.inf != fast.inf)
-		{
-			std::cout << std::setprecision(20);
-			std::cout << x << '\n';
-		}
+		// TODO
 	}
 }
 

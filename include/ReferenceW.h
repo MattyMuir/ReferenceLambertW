@@ -1,7 +1,7 @@
 #pragma once
 #include <mpfr.h>
 
-#include "Interval.h"
+#include "../src/Interval.h"
 
 #define TRACK_BISECTIONS 0
 
