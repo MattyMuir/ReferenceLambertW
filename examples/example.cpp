@@ -64,5 +64,19 @@ void Profiling(size_t arrSize, size_t numIter)
 
 int main()
 {
-	SpeedTest(10'000);
+	std::vector<double> xs;
+	for (double x = 0.24; x < 709; x += 0.5)
+		xs.push_back(x);
+
+	std::vector<double> ys = xs;
+	ReferenceW evaluator;
+	std::transform(ys.begin(), ys.end(), ys.begin(), [&](double v) { return evaluator.Wm1(-exp(-v - 1)).inf; });
+
+	for (double x : xs)
+		std::cout << std::format("{}\n", x);
+
+	std::cout << "\n\n\n\n\n";
+
+	for (double y : ys)
+		std::cout << std::format("{}\n", y);
 }
