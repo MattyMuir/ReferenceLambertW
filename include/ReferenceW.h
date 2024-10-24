@@ -7,7 +7,7 @@
 
 class ReferenceW
 {
-private:
+public:
 	enum class Sign { Negative, Positive, Inconclusive };
 
 public:
@@ -21,6 +21,8 @@ public:
 	void LogBisectionStats() const;
 #endif
 
+	Sign GetMidpointSign(double x, mpfr_t midpoint, bool useHighPrec);
+
 private:
 	mpfr_t xMpfr, low, high, temp0, temp1;
 	mpfr_t m, yLowP0, yHighP0, yLowP1, yHighP1;
@@ -31,7 +33,6 @@ private:
 	size_t numInconclusive = 0;
 #endif
 
-	Sign GetMidpointSign(double x, mpfr_t midpoint, bool useHighPrec);
 	Interval Bisection(double x, mpfr_t low, mpfr_t high, bool increasing);
 	void HalleyW0(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper);
 	void HalleyWm1(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper);

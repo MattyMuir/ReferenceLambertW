@@ -31,15 +31,44 @@ void SpeedTest(size_t arrSize)
 	std::cout << _ << '\n';
 }
 
+ReferenceW::Sign GetPointSign(double x, double w)
+{
+	static ReferenceW evaluator;
+
+	// Convert w to MPFR
+	mpfr_t wMpfr;
+	mpfr_init2(wMpfr, 53);
+	mpfr_set_d(wMpfr, w, MPFR_RNDN);
+
+	// Get sign
+	ReferenceW::Sign sign = evaluator.GetMidpointSign(x, wMpfr, false);
+	if (sign == ReferenceW::Sign::Inconclusive)
+		sign = evaluator.GetMidpointSign(x, wMpfr, true);
+
+	// Clear MPFR variable
+	mpfr_clear(wMpfr);
+
+	if (sign == ReferenceW::Sign::Inconclusive)
+		throw;
+
+	return sign;
+}
+
 void Test()
 {
 	static std::mt19937_64 gen{ std::random_device{}() };
-	std::uniform_real_distribution<double> dist{ -0.3678794411714423, 0 };
+	std::uniform_real_distribution<double> dist{ -1e-310, -1e-315 };
 
 	ReferenceW evaluator;
 	for (;;)
 	{
-		// TODO
+		double x = dist(gen);
+		auto [inf, sup] = evaluator.Wm1(x);
+
+		auto infSign = GetPointSign(x, inf);
+		auto supSign = GetPointSign(x, sup);
+		if (infSign == supSign)
+			std::cerr << std::format("Error! x: {}\n", x);
 	}
 }
 
