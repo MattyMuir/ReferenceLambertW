@@ -96,7 +96,7 @@ Interval ReferenceW::W0(double x)
 	else
 	{
 		// low = x * (1 - x * 5)
-		mpfr_mul_ui(temp0, xMpfr, 5, MPFR_RNDN);
+		mpfr_mul_ui(temp0, xMpfr, 5, MPFR_RNDD);
 		mpfr_ui_sub(low, 1, temp0, MPFR_RNDU);
 		mpfr_mul(low, low, xMpfr, MPFR_RNDD);
 
