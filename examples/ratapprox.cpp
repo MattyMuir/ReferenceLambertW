@@ -1,10 +1,12 @@
+#include <cassert>
+
 #include <iostream>
 #include <vector>
 #include <format>
 
 #include "ReferenceW.h"
 
-constexpr size_t pOrder = 5;
+constexpr size_t pOrder = 4;
 constexpr size_t qOrder = 4;
 constexpr size_t numCoeffs = pOrder + qOrder + 1;
 
@@ -52,26 +54,28 @@ int main()
 	// Prepare data
 	std::vector<double> xs, ys;
 	ReferenceW evaluator;
-	for (double x = 0.5; x < 709; x += 0.1)
+	for (double x = -0.29; x < 7.34; x += 0.011)
 	{
 		xs.push_back(x);
-		ys.push_back(evaluator.Wm1(-exp(-x - 1)).inf);
+		ys.push_back(evaluator.W0(x).inf);
 	}
 
 	// Initial parameters
-	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 	std::vector<double> scales{
-		-168122.526858,
-		-598634.985232,
-		-304540.505252,
-		-29876.9519565,
-		-493.433883072,
-		-1.00044283758,
-		129082.609542,
-		193651.02343,
-		26939.8181948,
-		484.946505393
+		0,
+		30.6615230228,
+		83.8519914551,
+		46.1167994941,
+		3.47179067097,
+		30.6666937031,
+		114.471438222,
+		114.536515609,
+		28.6775252301
 	};
+
+	if (ps.size() != scales.size() || ps.size() != numCoeffs)
+		throw;
 
 	// Gradient descent
 	std::vector<double> derivs(numCoeffs);
@@ -93,7 +97,7 @@ int main()
 			double originalParam = ps[pi];
 
 			// Finite difference gradient approximation
-			static constexpr double h = 1e-8;
+			static constexpr double h = 1e-10;
 			ps[pi] += h;
 			double newError = GetMaxError(xs, ys, ps, scales);
 			derivs[pi] = (newError - initialError) / h;
@@ -103,7 +107,7 @@ int main()
 
 		// Take steps
 		for (size_t pi = 0; pi < numCoeffs; pi++)
-			ps[pi] -= derivs[pi] * 1e-5;
+			ps[pi] -= derivs[pi] * 1e-8;
 	}
 
 	// Get coefficients

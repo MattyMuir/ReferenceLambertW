@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cfloat>
 #include <cmath>
+#include <cfenv>
 
 #include <iomanip>
 #include <iostream>

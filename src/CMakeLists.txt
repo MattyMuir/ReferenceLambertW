@@ -4,12 +4,16 @@
 include(GNUInstallDirs)
 
 # === Create Library ===
-add_library(ReferenceLambertW  "ReferenceW.cpp" "Interval.h" )
+add_library(ReferenceLambertW  "ReferenceW.cpp" "Interval.h"  "ReferenceW2.cpp")
 
 # === Libraries ===
 find_package(PkgConfig)
 pkg_check_modules(mpfr REQUIRED IMPORTED_TARGET mpfr)
 target_link_libraries(ReferenceLambertW PRIVATE PkgConfig::mpfr)
+
+find_package(sleef REQUIRED)
+target_link_libraries(ReferenceLambertW PUBLIC sleef::sleef)
+target_include_directories(ReferenceLambertW PRIVATE ${SLEEF_INCLUDE_DIR})
 
 # === Feature Enables ===
 if (REFERENCEW_MSVC_STATIC_RUNTIME)

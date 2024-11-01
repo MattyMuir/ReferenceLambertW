@@ -7,23 +7,24 @@
 #include "Timer.h"
 
 #include "ReferenceW.h"
+#include "ReferenceW2.h"
 
 void SpeedTest(size_t arrSize)
 {
 	// Prepare test data
 	std::vector<double> data;
 	static std::mt19937_64 gen{ std::random_device{}() };
-	std::uniform_real_distribution<double> dist{ -0.3, 0 };
+	std::uniform_real_distribution<double> dist{ 10, 100 };
 	for (size_t i = 0; i < arrSize; i++)
 		data.push_back(dist(gen));
 
 	// Without repeated inits
-	ReferenceW evaluator;
+	ReferenceW2 evaluator;
 
 	TIMER(currentVersion);
 	double _ = 0;
 	for (double d : data)
-		_ += evaluator.Wm1(d).inf;
+		_ += evaluator.W0(d).inf;
 	STOP_LOG(currentVersion);
 
 	// Make sure evaluations are not optimized away
@@ -59,11 +60,14 @@ void Test()
 	static std::mt19937_64 gen{ std::random_device{}() };
 	std::uniform_real_distribution<double> dist{ -1e-310, -1e-315 };
 
-	ReferenceW evaluator;
+	ReferenceW2 evaluator;
 	for (;;)
 	{
 		double x = dist(gen);
 		auto [inf, sup] = evaluator.Wm1(x);
+
+		if (sup != inf && sup != std::nextafter(inf, INFINITY))
+			std::cerr << std::format("Bracket too wide! x: {}\n", x);
 
 		auto infSign = GetPointSign(x, inf);
 		auto supSign = GetPointSign(x, sup);
@@ -81,7 +85,7 @@ void Profiling(size_t arrSize, size_t numIter)
 	for (size_t i = 0; i < arrSize; i++)
 		data.push_back(dist(gen));
 
-	ReferenceW evaluator;
+	ReferenceW2 evaluator;
 
 	double _ = 0.0;
 	for (size_t i = 0; i < numIter; i++)
@@ -93,13 +97,14 @@ void Profiling(size_t arrSize, size_t numIter)
 
 int main()
 {
+#if 0
 	std::vector<double> xs;
-	for (double x = 0.24; x < 709; x += 0.5)
+	for (double x = -0.29; x < 7.34; x += 0.011)
 		xs.push_back(x);
 
 	std::vector<double> ys = xs;
 	ReferenceW evaluator;
-	std::transform(ys.begin(), ys.end(), ys.begin(), [&](double v) { return evaluator.Wm1(-exp(-v - 1)).inf; });
+	std::transform(ys.begin(), ys.end(), ys.begin(), [&](double x) { return evaluator.W0(x).inf; });
 
 	for (double x : xs)
 		std::cout << std::format("{}\n", x);
@@ -108,4 +113,7 @@ int main()
 
 	for (double y : ys)
 		std::cout << std::format("{}\n", y);
+#endif
+
+	SpeedTest(100'000);
 }
