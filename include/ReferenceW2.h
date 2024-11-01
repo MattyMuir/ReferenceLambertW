@@ -21,10 +21,9 @@ public:
 	void LogBisectionStats() const;
 #endif
 
-	Sign GetMidpointSign(double x, mpfr_t midpoint, bool useHighPrec);
+	Sign GetMidpointSign(double x, double m, bool useHighPrec);
 
 private:
-	mpfr_t low, high;
 	mpfr_t m, yLowP0, yHighP0, yLowP1, yHighP1;
 
 #if TRACK_BISECTIONS
@@ -32,7 +31,7 @@ private:
 	size_t numInconclusive = 0;
 #endif
 
-	Interval Bisection(double x, double low_, double high_, bool increasing);
+	Interval Bisection(double x, double low, double high, bool increasing);
 	double HalleyW0(double x, double w, bool isUpper);
 	double HalleyWm1(double x, double w, bool isUpper);
 };

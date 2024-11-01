@@ -58,13 +58,13 @@ ReferenceW::Sign GetPointSign(double x, double w)
 void Test()
 {
 	static std::mt19937_64 gen{ std::random_device{}() };
-	std::uniform_real_distribution<double> dist{ -1e-310, -1e-315 };
+	std::uniform_real_distribution<double> dist{ 10, 100 };
 
 	ReferenceW2 evaluator;
 	for (;;)
 	{
 		double x = dist(gen);
-		auto [inf, sup] = evaluator.Wm1(x);
+		auto [inf, sup] = evaluator.W0(x);
 
 		if (sup != inf && sup != std::nextafter(inf, INFINITY))
 			std::cerr << std::format("Bracket too wide! x: {}\n", x);
@@ -115,5 +115,6 @@ int main()
 		std::cout << std::format("{}\n", y);
 #endif
 
+	Test();
 	SpeedTest(100'000);
 }

@@ -7,6 +7,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <numeric>
 
 #define SLEEF_STATIC_LIBS
 #include <sleef.h>
@@ -65,9 +66,6 @@ static inline std::pair<double, double> LogUpDown(double x)
 
 ReferenceW2::ReferenceW2()
 {
-	mpfr_init2(low, 53);
-	mpfr_init2(high, 53);
-
 	mpfr_init2(m, 53);
 	mpfr_init2(yLowP0, 53);
 	mpfr_init2(yHighP0, 53);
@@ -77,9 +75,6 @@ ReferenceW2::ReferenceW2()
 
 ReferenceW2::~ReferenceW2()
 {
-	mpfr_clear(low);
-	mpfr_clear(high);
-
 	mpfr_clear(m);
 	mpfr_clear(yLowP0);
 	mpfr_clear(yHighP0);
@@ -193,26 +188,28 @@ void ReferenceW2::LogBisectionStats() const
 }
 #endif
 
-ReferenceW2::Sign ReferenceW2::GetMidpointSign(double x, mpfr_t midpoint, bool useHighPrec)
+ReferenceW2::Sign ReferenceW2::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 {
 #if TRACK_BISECTIONS
 	if (!useHighPrec) numBisections++;
 #endif
 
+	mpfr_set_d(m, midpoint, MPFR_RNDN);
+
 	mpfr_t& yLow = useHighPrec ? yLowP1 : yLowP0;
 	mpfr_t& yHigh = useHighPrec ? yHighP1 : yHighP0;
 
 	// Compute exp
-	ExpUpDown(yLow, yHigh, midpoint);
-	if (mpfr_cmp_ui(midpoint, 0) < 0)
+	ExpUpDown(yLow, yHigh, m);
+	if (mpfr_cmp_ui(m, 0) < 0)
 		mpfr_swap(yLow, yHigh);
 
 	// Compute yLow
-	mpfr_mul(yLow, yLow, midpoint, MPFR_RNDD);
+	mpfr_mul(yLow, yLow, m, MPFR_RNDD);
 	mpfr_sub_d(yLow, yLow, x, MPFR_RNDD);
 
 	// Compute yHigh
-	mpfr_mul(yHigh, yHigh, midpoint, MPFR_RNDU);
+	mpfr_mul(yHigh, yHigh, m, MPFR_RNDU);
 	mpfr_sub_d(yHigh, yHigh, x, MPFR_RNDU);
 
 	int lowCmp = mpfr_cmp_ui(yLow, 0);
@@ -230,18 +227,14 @@ ReferenceW2::Sign ReferenceW2::GetMidpointSign(double x, mpfr_t midpoint, bool u
 	return Sign::Inconclusive;
 }
 
-Interval ReferenceW2::Bisection(double x, double low_, double high_, bool increasing)
+Interval ReferenceW2::Bisection(double x, double low, double high, bool increasing)
 {
-	mpfr_set_d(low, low_, MPFR_RNDN);
-	mpfr_set_d(high, high_, MPFR_RNDN);
-
 	for (;;)
 	{
 		// m = (low + high) / 2
-		mpfr_add(m, low, high, MPFR_RNDN);
-		mpfr_div_2ui(m, m, 1, MPFR_RNDN);
+		double m = std::midpoint(low, high);
 
-		if (mpfr_equal_p(m, low) || mpfr_equal_p(m, high))
+		if (m == low || m == high)
 			break; // Bracket cannot be narrowed any further
 
 		// Calculate midpoint sign
@@ -257,16 +250,13 @@ Interval ReferenceW2::Bisection(double x, double low_, double high_, bool increa
 		}
 
 		// Update bracket
-		if (sign == Sign::Positive)
-			mpfr_set(increasing ? high : low, m, MPFR_RNDN);
+		if ((sign == Sign::Positive) == increasing)
+			high = m;
 		else
-			mpfr_set(increasing ? low : high, m, MPFR_RNDN);
+			low = m;
 	}
 
-	double lowD = mpfr_get_d(low, MPFR_RNDD);
-	double highD = mpfr_get_d(high, MPFR_RNDU);
-
-	return { lowD, highD };
+	return { low, high };
 }
 
 double ReferenceW2::HalleyW0(double x, double w, bool isUpper)
