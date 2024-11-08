@@ -4,7 +4,7 @@
 include(GNUInstallDirs)
 
 # === Create Library ===
-add_library(ReferenceLambertW  "ReferenceW.cpp" "Interval.h"  "ReferenceW2.cpp")
+add_library(ReferenceLambertW "Interval.h" "ReferenceW.cpp")
 
 # === Libraries ===
 find_package(PkgConfig)

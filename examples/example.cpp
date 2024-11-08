@@ -7,7 +7,6 @@
 #include "Timer.h"
 
 #include "ReferenceW.h"
-#include "ReferenceW2.h"
 
 void SpeedTest(size_t arrSize)
 {
@@ -19,7 +18,7 @@ void SpeedTest(size_t arrSize)
 		data.push_back(dist(gen));
 
 	// Without repeated inits
-	ReferenceW2 evaluator;
+	ReferenceW evaluator;
 
 	TIMER(currentVersion);
 	double _ = 0;
@@ -36,18 +35,10 @@ ReferenceW::Sign GetPointSign(double x, double w)
 {
 	static ReferenceW evaluator;
 
-	// Convert w to MPFR
-	mpfr_t wMpfr;
-	mpfr_init2(wMpfr, 53);
-	mpfr_set_d(wMpfr, w, MPFR_RNDN);
-
 	// Get sign
-	ReferenceW::Sign sign = evaluator.GetMidpointSign(x, wMpfr, false);
+	ReferenceW::Sign sign = evaluator.GetMidpointSign(x, w, false);
 	if (sign == ReferenceW::Sign::Inconclusive)
-		sign = evaluator.GetMidpointSign(x, wMpfr, true);
-
-	// Clear MPFR variable
-	mpfr_clear(wMpfr);
+		sign = evaluator.GetMidpointSign(x, w, true);
 
 	if (sign == ReferenceW::Sign::Inconclusive)
 		throw;
@@ -60,7 +51,7 @@ void Test()
 	static std::mt19937_64 gen{ std::random_device{}() };
 	std::uniform_real_distribution<double> dist{ 10, 100 };
 
-	ReferenceW2 evaluator;
+	ReferenceW evaluator;
 	for (;;)
 	{
 		double x = dist(gen);
@@ -85,7 +76,7 @@ void Profiling(size_t arrSize, size_t numIter)
 	for (size_t i = 0; i < arrSize; i++)
 		data.push_back(dist(gen));
 
-	ReferenceW2 evaluator;
+	ReferenceW evaluator;
 
 	double _ = 0.0;
 	for (size_t i = 0; i < numIter; i++)

@@ -7,62 +7,79 @@
 
 #include <iomanip>
 #include <iostream>
+#include <numeric>
+
+#define SLEEF_STATIC_LIBS
+#include <sleef.h>
 
 // (-1/e) rounded towards +Inf
 static const double EM_UP = -0.3678794411714423;
 
+static inline double add(double x, double y, int rnd)
+{
+	fesetround(rnd);
+	return x + y;
+}
+
+static inline double sub(double x, double y, int rnd)
+{
+	fesetround(rnd);
+	return x - y;
+}
+
+static inline double mul(double x, double y, int rnd)
+{
+	fesetround(rnd);
+	return x * y;
+}
+
+static inline double div(double x, double y, int rnd)
+{
+	fesetround(rnd);
+	return x / y;
+}
+
+static inline double sqrt(double x, int rnd)
+{
+	fesetround(rnd);
+	return sqrt(x);
+}
+
+static inline std::pair<double, double> ExpUpDown(double x)
+{
+	double v = Sleef_exp_u10(x);
+	return { std::nextafter(v, -INFINITY), std::nextafter(v, INFINITY) };
+}
+
+static inline void ExpUpDown(mpfr_t down, mpfr_t up, mpfr_t x)
+{
+	int isBelow = mpfr_exp(down, x, MPFR_RNDD);
+	mpfr_set(up, down, MPFR_RNDN);
+	if (isBelow) mpfr_nextabove(up);
+}
+
+static inline std::pair<double, double> LogUpDown(double x)
+{
+	double v = Sleef_log_u10(x);
+	return { std::nextafter(v, -INFINITY), std::nextafter(v, INFINITY) };
+}
+
 ReferenceW::ReferenceW()
 {
-	mpfr_init2(xMpfr, 53);
-	mpfr_init2(low, 53);
-	mpfr_init2(high, 53);
-	mpfr_init2(temp0, 53);
-	mpfr_init2(temp1, 53);
-
 	mpfr_init2(m, 53);
 	mpfr_init2(yLowP0, 53);
 	mpfr_init2(yHighP0, 53);
 	mpfr_init2(yLowP1, 150);
 	mpfr_init2(yHighP1, 150);
-
-	mpfr_init2(expUp, 53);
-	mpfr_init2(expDown, 53);
-	mpfr_init2(wexpDown, 53);
-	mpfr_init2(wexpUp, 53);
-	mpfr_init2(numerator0, 53);
-	mpfr_init2(numerator1, 53);
-	mpfr_init2(wplus2, 53);
-	mpfr_init2(denominator1, 53);
-	mpfr_init2(frac1, 53);
-	mpfr_init2(denominator0, 53);
-	mpfr_init2(newW, 53);
 }
 
 ReferenceW::~ReferenceW()
 {
-	mpfr_clear(xMpfr);
-	mpfr_clear(low);
-	mpfr_clear(high);
-	mpfr_clear(temp0);
-	mpfr_clear(temp1);
-
 	mpfr_clear(m);
 	mpfr_clear(yLowP0);
 	mpfr_clear(yHighP0);
 	mpfr_clear(yLowP1);
 	mpfr_clear(yHighP1);
-
-	mpfr_clear(expUp);
-	mpfr_clear(expDown);
-	mpfr_clear(wexpDown);
-	mpfr_clear(wexpUp);
-	mpfr_clear(numerator0);
-	mpfr_clear(numerator1);
-	mpfr_clear(wplus2);
-	mpfr_clear(denominator1);
-	mpfr_clear(frac1);
-	mpfr_clear(denominator0);
-	mpfr_clear(newW);
 }
 
 Interval ReferenceW::W0(double x)
@@ -73,44 +90,43 @@ Interval ReferenceW::W0(double x)
 	if (x == INFINITY)
 		return { DBL_MAX, INFINITY };
 
-	// Convert x to mpfr
-	mpfr_set_d(xMpfr, x, MPFR_RNDN);
-
 	// === Compute Bracket ===
 	// high = ln(x + 1)
-	mpfr_log1p(high, xMpfr, MPFR_RNDU);
+	double high = Sleef_log1p_u10(x);
+	high = std::nextafter(high, INFINITY);
 
+	double low;
 	if (x > 3)
 	{
 		// low = ln(x) - ln(ln(x))
-		LogUpDown(temp0, temp1, xMpfr);
-		mpfr_log(temp1, temp1, MPFR_RNDU);
+		auto [logDown, logUp] = LogUpDown(x);
+		logUp = std::nextafter(Sleef_log_u10(logUp), INFINITY);
 
-		mpfr_sub(low, temp0, temp1, MPFR_RNDD);
+		low = sub(logDown, logUp, FE_DOWNWARD);
 	}
 	else if (x >= 0)
 	{
 		// low = x / (x + 1)
-		mpfr_add_ui(temp0, xMpfr, 1, MPFR_RNDU);
-		mpfr_div(low, xMpfr, temp0, MPFR_RNDD);
+		double xp1 = add(x, 1, FE_UPWARD);
+		low = div(x, xp1, FE_DOWNWARD);
 	}
 	else
 	{
 		// low = x * (1 - x * 5)
-		mpfr_mul_ui(temp0, xMpfr, 5, MPFR_RNDD);
-		mpfr_ui_sub(low, 1, temp0, MPFR_RNDU);
-		mpfr_mul(low, low, xMpfr, MPFR_RNDD);
+		double x5 = mul(x, 5, FE_DOWNWARD);
+		low = sub(1, x5, FE_UPWARD);
+		low = mul(low, x, FE_DOWNWARD);
 
 		// Clamp low above -1
-		if (mpfr_cmp_si(low, -1) < 0)
-			mpfr_set_si(low, -1, MPFR_RNDN);
+		if (low < -1)
+			low = -1;
 	}
 
 	// === Halley Iterations ===
 	for (size_t i = 0; i < 4; i++)
 	{
-		HalleyW0(low, xMpfr, low, false);
-		HalleyW0(high, xMpfr, high, true);
+		low = HalleyW0(x, low, false);
+		high = HalleyW0(x, high, true);
 	}
 
 	// === Bisection ===
@@ -126,39 +142,34 @@ Interval ReferenceW::Wm1(double x)
 	if (x < EM_UP || x >= 0)
 		return { NAN, NAN };
 
-	// Convert x to mpfr
-	mpfr_set_d(xMpfr, x, MPFR_RNDN);
-
 	// === Compute Bracket ===
-	mpfr_neg(temp0, xMpfr, MPFR_RNDN);
-	mpfr_log(temp0, temp0, MPFR_RNDU);
-	mpfr_neg(temp0, temp0, MPFR_RNDN);
-	mpfr_sub_ui(temp0, temp0, 1, MPFR_RNDD);
+	auto [uUp, uDown] = LogUpDown(-x);
 
-	mpfr_neg(temp1, xMpfr, MPFR_RNDN);
-	mpfr_log(temp1, temp1, MPFR_RNDD);
-	mpfr_neg(temp1, temp1, MPFR_RNDN);
-	mpfr_sub_ui(temp1, temp1, 1, MPFR_RNDU);
+	uDown = -uDown;
+	uDown = sub(uDown, 1, FE_DOWNWARD);
+
+	uUp = -uUp;
+	uUp = sub(uUp, 1, FE_UPWARD);
 
 	// low = -1 - (sqrt(u * 2) + u);
-	mpfr_mul_2ui(low, temp1, 1, MPFR_RNDU);
-	mpfr_sqrt(low, low, MPFR_RNDU);
-	mpfr_add(low, low, temp1, MPFR_RNDU);
-	mpfr_si_sub(low, -1, low, MPFR_RNDD);
+	double low = add(uUp, uUp, FE_UPWARD);
+	low = sqrt(low, FE_UPWARD);
+	low = add(low, uUp, FE_UPWARD);
+	low = sub(-1, low, FE_DOWNWARD);
 
 	// high = -1 - (sqrt(u * 2) + u * 2 / 3)
-	mpfr_mul_2ui(high, temp0, 1, MPFR_RNDD);
-	mpfr_sqrt(high, high, MPFR_RNDD);
-	mpfr_mul_2ui(temp0, temp0, 1, MPFR_RNDD);
-	mpfr_div_ui(temp0, temp0, 3, MPFR_RNDD);
-	mpfr_add(high, high, temp0, MPFR_RNDD);
-	mpfr_si_sub(high, -1, high, MPFR_RNDU);
+	double high = add(uDown, uDown, FE_DOWNWARD);
+	high = sqrt(high, FE_DOWNWARD);
+	uDown = add(uDown, uDown, FE_DOWNWARD);
+	uDown = div(uDown, 3, FE_DOWNWARD);
+	high = add(high, uDown, FE_DOWNWARD);
+	high = sub(-1, high, FE_UPWARD);
 
 	// === Halley Iterations ===
 	for (size_t i = 0; i < 3; i++)
 	{
-		HalleyWm1(low, xMpfr, low, false);
-		HalleyWm1(high, xMpfr, high, true);
+		low = HalleyWm1(x, low, false);
+		high = HalleyWm1(x, high, true);
 	}
 
 	// === Bisection ===
@@ -177,26 +188,28 @@ void ReferenceW::LogBisectionStats() const
 }
 #endif
 
-ReferenceW::Sign ReferenceW::GetMidpointSign(double x, mpfr_t midpoint, bool useHighPrec)
+ReferenceW::Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 {
 #if TRACK_BISECTIONS
 	if (!useHighPrec) numBisections++;
 #endif
 
+	mpfr_set_d(m, midpoint, MPFR_RNDN);
+
 	mpfr_t& yLow = useHighPrec ? yLowP1 : yLowP0;
 	mpfr_t& yHigh = useHighPrec ? yHighP1 : yHighP0;
 
 	// Compute exp
-	ExpUpDown(yLow, yHigh, midpoint);
-	if (mpfr_cmp_ui(midpoint, 0) < 0)
+	ExpUpDown(yLow, yHigh, m);
+	if (mpfr_cmp_ui(m, 0) < 0)
 		mpfr_swap(yLow, yHigh);
 
 	// Compute yLow
-	mpfr_mul(yLow, yLow, midpoint, MPFR_RNDD);
+	mpfr_mul(yLow, yLow, m, MPFR_RNDD);
 	mpfr_sub_d(yLow, yLow, x, MPFR_RNDD);
 
 	// Compute yHigh
-	mpfr_mul(yHigh, yHigh, midpoint, MPFR_RNDU);
+	mpfr_mul(yHigh, yHigh, m, MPFR_RNDU);
 	mpfr_sub_d(yHigh, yHigh, x, MPFR_RNDU);
 
 	int lowCmp = mpfr_cmp_ui(yLow, 0);
@@ -214,15 +227,14 @@ ReferenceW::Sign ReferenceW::GetMidpointSign(double x, mpfr_t midpoint, bool use
 	return Sign::Inconclusive;
 }
 
-Interval ReferenceW::Bisection(double x, mpfr_t low, mpfr_t high, bool increasing)
+Interval ReferenceW::Bisection(double x, double low, double high, bool increasing)
 {
 	for (;;)
 	{
 		// m = (low + high) / 2
-		mpfr_add(m, low, high, MPFR_RNDN);
-		mpfr_div_2ui(m, m, 1, MPFR_RNDN);
+		double m = std::midpoint(low, high);
 
-		if (mpfr_equal_p(m, low) || mpfr_equal_p(m, high))
+		if (m == low || m == high)
 			break; // Bracket cannot be narrowed any further
 
 		// Calculate midpoint sign
@@ -238,19 +250,16 @@ Interval ReferenceW::Bisection(double x, mpfr_t low, mpfr_t high, bool increasin
 		}
 
 		// Update bracket
-		if (sign == Sign::Positive)
-			mpfr_set(increasing ? high : low, m, MPFR_RNDN);
+		if ((sign == Sign::Positive) == increasing)
+			high = m;
 		else
-			mpfr_set(increasing ? low : high, m, MPFR_RNDN);
+			low = m;
 	}
 
-	double lowD = mpfr_get_d(low, MPFR_RNDD);
-	double highD = mpfr_get_d(high, MPFR_RNDU);
-
-	return { lowD, highD };
+	return { low, high };
 }
 
-void ReferenceW::HalleyW0(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper)
+double ReferenceW::HalleyW0(double x, double w, bool isUpper)
 {
 	/*
 	result			= w - numerator0 / denominator0
@@ -272,53 +281,52 @@ void ReferenceW::HalleyW0(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper)
 	- denominator1	is POSITIVE and needs to be rounded DOWN
 	*/
 
-	mpfr_rnd_t rnd;
+	int rnd;
 
 	// expUp and expDown
-	ExpUpDown(expDown, expUp, w);
+	auto [expDown, expUp] = ExpUpDown(w);
 
 	// wexpDown
-	mpfr_t& exp0 = (mpfr_cmp_ui(w, 0) > 0) ? expDown : expUp;
-	mpfr_mul(wexpDown, w, exp0, MPFR_RNDD);
+	double exp0 = (w > 0) ? expDown : expUp;
+	double wexpDown = mul(w, exp0, FE_DOWNWARD);
 
 	// wexpUp
-	mpfr_t& exp1 = (mpfr_cmp_ui(w, 0) > 0) ? expUp : expDown;
-	mpfr_mul(wexpUp, w, exp1, MPFR_RNDU);
+	double exp1 = (w > 0) ? expUp : expDown;
+	double wexpUp = mul(w, exp1, FE_UPWARD);
 
 	// numerator0
-	rnd = isUpper ? MPFR_RNDD : MPFR_RNDU;
-	mpfr_sub(numerator0, isUpper ? wexpDown : wexpUp, x, rnd);
-	
+	rnd = isUpper ? FE_DOWNWARD : FE_UPWARD;
+	double numerator0 = sub(isUpper ? wexpDown : wexpUp, x, rnd);
+
 	// numerator1
-	rnd = isUpper ? MPFR_RNDD : MPFR_RNDU;
-	mpfr_add_ui(wplus2, w, 2, rnd);
-	mpfr_sub(numerator1, wexpDown, x, MPFR_RNDD);
-	mpfr_mul(numerator1, numerator1, wplus2, MPFR_RNDD);
+	rnd = isUpper ? FE_DOWNWARD : FE_UPWARD;
+	double wplus2 = add(w, 2, rnd);
+	double numerator1 = sub(wexpDown, x, FE_DOWNWARD);
+	numerator1 = mul(numerator1, wplus2, FE_DOWNWARD);
 
 	// denominator1
-	rnd = isUpper ? MPFR_RNDU : MPFR_RNDD;
-	mpfr_mul_2ui(denominator1, w, 1, rnd);
-	mpfr_add_ui(denominator1, denominator1, 2, rnd);
+	rnd = isUpper ? FE_UPWARD : FE_DOWNWARD;
+	double denominator1 = add(w, w, rnd);
+	denominator1 = add(denominator1, 2, rnd);
 
 	// frac1
-	mpfr_div(frac1, numerator1, denominator1, MPFR_RNDD);
+	double frac1 = div(numerator1, denominator1, FE_DOWNWARD);
 
 	// denominator0
-	mpfr_add_ui(denominator0, w, 1, MPFR_RNDU);
-	mpfr_mul(denominator0, denominator0, expUp, MPFR_RNDU);
-	mpfr_sub(denominator0, denominator0, frac1, MPFR_RNDU);
+	double denominator0 = add(w, 1, FE_UPWARD);
+	denominator0 = mul(denominator0, expUp, FE_UPWARD);
+	denominator0 = sub(denominator0, frac1, FE_UPWARD);
 
 	// newW
-	rnd = isUpper ? MPFR_RNDD : MPFR_RNDU;
-	mpfr_div(newW, numerator0, denominator0, rnd);
-	rnd = isUpper ? MPFR_RNDU : MPFR_RNDD;
-	mpfr_sub(newW, w, newW, rnd);
+	rnd = isUpper ? FE_DOWNWARD : FE_UPWARD;
+	double newW = div(numerator0, denominator0, rnd);
+	rnd = isUpper ? FE_UPWARD : FE_DOWNWARD;
+	newW = sub(w, newW, rnd);
 
-	// Store result
-	mpfr_set(result, newW, MPFR_RNDN);
+	return newW;
 }
 
-void ReferenceW::HalleyWm1(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper)
+double ReferenceW::HalleyWm1(double x, double w, bool isUpper)
 {
 	/*
 	result			= w - numerator0 / denominator0
@@ -340,64 +348,46 @@ void ReferenceW::HalleyWm1(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper)
 	- denominator1	is NEGATIVE				and needs to be rounded DOWN when w > -2
 	*/
 
-	mpfr_rnd_t rnd;
+	int rnd;
 
 	// expUp and expDown
-	ExpUpDown(expDown, expUp, w);
+	auto [expDown, expUp] = ExpUpDown(w);
 
 	// wexpDown
-	mpfr_mul(wexpDown, w, expUp, MPFR_RNDD);
+	double wexpDown = mul(w, expUp, FE_DOWNWARD);
 
 	// wexpUp
-	mpfr_mul(wexpUp, w, expDown, MPFR_RNDU);
+	double wexpUp = mul(w, expDown, FE_UPWARD);
 
 	// numerator0
-	rnd = isUpper ? MPFR_RNDU : MPFR_RNDD;
-	mpfr_sub(numerator0, isUpper ? wexpUp : wexpDown, x, rnd);
+	rnd = isUpper ? FE_UPWARD : FE_DOWNWARD;
+	double numerator0 = sub(isUpper ? wexpUp : wexpDown, x, rnd);
 
 	// numerator1
-	rnd = isUpper ? MPFR_RNDU : MPFR_RNDD;
-	mpfr_add_ui(wplus2, w, 2, rnd);
-	rnd = mpfr_cmp_ui(wplus2, 0) > 0 ? MPFR_RNDD : MPFR_RNDU;
-	mpfr_sub(numerator1, mpfr_cmp_ui(wplus2, 0) > 0 ? wexpDown : wexpUp, x, rnd);
-	mpfr_mul(numerator1, numerator1, wplus2, MPFR_RNDD);
+	rnd = isUpper ? FE_UPWARD : FE_DOWNWARD;
+	double wplus2 = add(w, 2, rnd);
+	rnd = (wplus2 > 0) ? FE_DOWNWARD : FE_UPWARD;
+	double numerator1 = sub((wplus2 > 0) ? wexpDown : wexpUp, x, rnd);
+	numerator1 = mul(numerator1, wplus2, FE_DOWNWARD);
 
 	// denominator1
-	if (isUpper == mpfr_cmp_ui(wplus2, 0) > 0)
-		rnd = MPFR_RNDU;
-	else
-		rnd = MPFR_RNDD;
-	mpfr_mul_2ui(denominator1, w, 1, rnd);
-	mpfr_add_ui(denominator1, denominator1, 2, rnd);
+	rnd = (isUpper == (wplus2 > 0)) ? FE_UPWARD : FE_DOWNWARD;
+	double denominator1 = add(w, w, rnd);
+	denominator1 = add(denominator1, 2, rnd);
 
 	// frac1
-	mpfr_div(frac1, numerator1, denominator1, MPFR_RNDU);
+	double frac1 = div(numerator1, denominator1, FE_UPWARD);
 
 	// denominator0
-	mpfr_add_ui(denominator0, w, 1, MPFR_RNDD);
-	mpfr_mul(denominator0, denominator0, expUp, MPFR_RNDD);
-	mpfr_sub(denominator0, denominator0, frac1, MPFR_RNDD);
+	double denominator0 = add(w, 1, FE_DOWNWARD);
+	denominator0 = mul(denominator0, expUp, FE_DOWNWARD);
+	denominator0 = sub(denominator0, frac1, FE_DOWNWARD);
 
 	// newW
-	rnd = isUpper ? MPFR_RNDD : MPFR_RNDU;
-	mpfr_div(newW, numerator0, denominator0, rnd);
-	rnd = isUpper ? MPFR_RNDU : MPFR_RNDD;
-	mpfr_sub(newW, w, newW, rnd);
+	rnd = isUpper ? FE_DOWNWARD : FE_UPWARD;
+	double newW = div(numerator0, denominator0, rnd);
+	rnd = isUpper ? FE_UPWARD : FE_DOWNWARD;
+	newW = sub(w, newW, rnd);
 
-	// Store result
-	mpfr_set(result, newW, MPFR_RNDN);
-}
-
-void ReferenceW::LogUpDown(mpfr_t down, mpfr_t up, mpfr_t x)
-{
-	int isBelow = mpfr_log(down, x, MPFR_RNDD);
-	mpfr_set(up, down, MPFR_RNDN);
-	if (isBelow) mpfr_nextabove(up);
-}
-
-void ReferenceW::ExpUpDown(mpfr_t down, mpfr_t up, mpfr_t x)
-{
-	int isBelow = mpfr_exp(down, x, MPFR_RNDD);
-	mpfr_set(up, down, MPFR_RNDN);
-	if (isBelow) mpfr_nextabove(up);
+	return newW;
 }

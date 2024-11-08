@@ -21,21 +21,17 @@ public:
 	void LogBisectionStats() const;
 #endif
 
-	Sign GetMidpointSign(double x, mpfr_t midpoint, bool useHighPrec);
+	Sign GetMidpointSign(double x, double m, bool useHighPrec);
 
 private:
-	mpfr_t xMpfr, low, high, temp0, temp1;
 	mpfr_t m, yLowP0, yHighP0, yLowP1, yHighP1;
-	mpfr_t expUp, expDown, wexpDown, wexpUp, numerator0, numerator1, wplus2, denominator1, frac1, denominator0, newW;
 
 #if TRACK_BISECTIONS
 	size_t numBisections = 0;
 	size_t numInconclusive = 0;
 #endif
 
-	Interval Bisection(double x, mpfr_t low, mpfr_t high, bool increasing);
-	void HalleyW0(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper);
-	void HalleyWm1(mpfr_t result, mpfr_t x, mpfr_t w, bool isUpper);
-	static void LogUpDown(mpfr_t down, mpfr_t up, mpfr_t x);
-	static void ExpUpDown(mpfr_t down, mpfr_t up, mpfr_t x);
+	Interval Bisection(double x, double low, double high, bool increasing);
+	double HalleyW0(double x, double w, bool isUpper);
+	double HalleyWm1(double x, double w, bool isUpper);
 };
