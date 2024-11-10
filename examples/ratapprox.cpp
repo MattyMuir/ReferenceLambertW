@@ -6,10 +6,10 @@
 
 #include "ReferenceW.h"
 
-constexpr size_t pOrder = 3;
-constexpr size_t qOrder = 1;
+constexpr size_t pOrder = 4;
+constexpr size_t qOrder = 4;
 constexpr size_t numCoeffs = pOrder + qOrder + 1;
-constexpr double yOffset = -1;
+constexpr double yOffset = 0;
 
 struct DerivState
 {
@@ -104,27 +104,31 @@ double Wm1(double x)
 
 double Func(double x)
 {
-	return Wm1(-exp(-0.5 * x * x - 1));
+	return W0(x);
 }
 
 int main()
 {
 	// Prepare data
 	std::vector<double> xs, ys;
-	for (double x = 0.1; x < 38; x += 0.1)
+	for (double x = -0.28; x < 7.34; x += 0.011)
 	{
 		xs.push_back(x);
 		ys.push_back(Func(x));
 	}
 
 	// Initial parameters
-	std::vector<double> ps{ 1, 1, 1, 1, 1 };
+	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 	std::vector<double> scales{
 		0,
-		-5.5247349255,
-		-2.83789677377,
-		-0.499408296334,
-		5.5247349255
+		34.3954309092,
+		91.0420242434,
+		48.0463939579,
+		3.49160811185,
+		34.4017883401,
+		125.41703217,
+		121.737098854,
+		29.4952490136
 	};
 
 	if (ps.size() != scales.size() || ps.size() != numCoeffs)
@@ -137,7 +141,7 @@ int main()
 		auto [initialError, derivs] = GetMaxError(xs, ys, ps, scales);
 
 		// Stop condition
-		if (log10(initialError) < -4.17)
+		if (log10(initialError) < -4.07)
 			break;
 
 		if (iter % 1000 == 0)
@@ -145,7 +149,7 @@ int main()
 
 		// Take steps
 		for (size_t pi = 0; pi < numCoeffs; pi++)
-			ps[pi] -= derivs[pi] * 1e-6;
+			ps[pi] -= derivs[pi] * 1e-7;
 	}
 
 	// Get coefficients

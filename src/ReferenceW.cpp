@@ -47,6 +47,7 @@ static inline double sqrt(double x, int rnd)
 
 static inline std::pair<double, double> ExpUpDown(double x)
 {
+	fesetround(FE_TONEAREST);
 	double v = Sleef_exp_u10(x);
 	return { std::nextafter(v, -INFINITY), std::nextafter(v, INFINITY) };
 }
@@ -60,6 +61,7 @@ static inline void ExpUpDown(mpfr_t down, mpfr_t up, mpfr_t x)
 
 static inline std::pair<double, double> LogUpDown(double x)
 {
+	fesetround(FE_TONEAREST);
 	double v = Sleef_log_u10(x);
 	return { std::nextafter(v, -INFINITY), std::nextafter(v, INFINITY) };
 }
@@ -89,6 +91,9 @@ Interval ReferenceW::W0(double x)
 		return { NAN, NAN };
 	if (x == INFINITY)
 		return { DBL_MAX, INFINITY };
+
+	// Save current rounding mode
+	int initialRnd = fegetround();
 
 	// === Compute Bracket ===
 	// high = ln(x + 1)
@@ -133,6 +138,9 @@ Interval ReferenceW::W0(double x)
 	auto ret = Bisection(x, low, high, true);
 	assert(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY));
 
+	// Restore rounding mode
+	fesetround(initialRnd);
+
 	return ret;
 }
 
@@ -141,6 +149,9 @@ Interval ReferenceW::Wm1(double x)
 	// Edge cases
 	if (x < EM_UP || x >= 0)
 		return { NAN, NAN };
+
+	// Save current rounding mode
+	int initialRnd = fegetround();
 
 	// === Compute Bracket ===
 	auto [uUp, uDown] = LogUpDown(-x);
@@ -175,6 +186,9 @@ Interval ReferenceW::Wm1(double x)
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, false);
 	assert(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY));
+
+	// Restore rounding mode
+	fesetround(initialRnd);
 
 	return ret;
 }
