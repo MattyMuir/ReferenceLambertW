@@ -4,12 +4,12 @@
 #include <vector>
 #include <format>
 
-#include "ReferenceW.h"
+#include <ReferenceLambertW.h>
 
-constexpr size_t pOrder = 4;
-constexpr size_t qOrder = 4;
+constexpr size_t pOrder = 9;
+constexpr size_t qOrder = 7;
 constexpr size_t numCoeffs = pOrder + qOrder + 1;
-constexpr double yOffset = 0;
+constexpr double yOffset = -1;
 
 struct DerivState
 {
@@ -104,31 +104,39 @@ double Wm1(double x)
 
 double Func(double x)
 {
-	return W0(x);
+	return Wm1(-exp(-0.5 * (x * x + 2)));
 }
 
 int main()
 {
 	// Prepare data
 	std::vector<double> xs, ys;
-	for (double x = -0.28; x < 7.34; x += 0.011)
+	for (double x = 0; x < 38; x += 0.05)
 	{
 		xs.push_back(x);
 		ys.push_back(Func(x));
 	}
 
 	// Initial parameters
-	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 	std::vector<double> scales{
 		0,
-		34.3954309092,
-		91.0420242434,
-		48.0463939579,
-		3.49160811185,
-		34.4017883401,
-		125.41703217,
-		121.737098854,
-		29.4952490136
+		-1014581.79223,
+		-1383122.26311,
+		-706686.04517,
+		-177742.636329,
+		-23289.8291289,
+		-2120.95023686,
+		-367.209806316,
+		-30.6376170252,
+		-0.499974590377,
+		1014579.89559,
+		1044943.94359,
+		330146.644298,
+		42485.7951511,
+		3538.73333116,
+		715.158920241,
+		61.2500329105
 	};
 
 	if (ps.size() != scales.size() || ps.size() != numCoeffs)
@@ -141,7 +149,7 @@ int main()
 		auto [initialError, derivs] = GetMaxError(xs, ys, ps, scales);
 
 		// Stop condition
-		if (log10(initialError) < -4.07)
+		if (log10(initialError) < -7.46)
 			break;
 
 		if (iter % 1000 == 0)
@@ -149,7 +157,7 @@ int main()
 
 		// Take steps
 		for (size_t pi = 0; pi < numCoeffs; pi++)
-			ps[pi] -= derivs[pi] * 1e-7;
+			ps[pi] -= derivs[pi] * 1e-9;
 	}
 
 	// Get coefficients

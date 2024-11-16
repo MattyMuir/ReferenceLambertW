@@ -23,3 +23,14 @@ project("ReferenceLambertW")
 add_subdirectory("src")
 
 add_subdirectory("examples")
+
+# === Tests ===
+enable_testing()
+set(CTEST_OUTPUT_ON_FAILURE ON)
+
+add_subdirectory("tests")
+
+add_test(NAME FloatW0 COMMAND tests 0)
+add_test(NAME FloatWm1 COMMAND tests 1)
+add_test(NAME DoubleW0 COMMAND tests 2)
+add_test(NAME DoubleWm1 COMMAND tests 3)

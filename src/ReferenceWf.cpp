@@ -1,12 +1,12 @@
-#include "ReferenceW.h"
+#include "ReferenceWf.h"
 
 #include <cassert>
 #include <cfloat>
 #include <cmath>
 #include <cfenv>
 
-#include <iomanip>
 #include <iostream>
+#include <iomanip>
 #include <numeric>
 
 #define SLEEF_STATIC_LIBS
@@ -16,18 +16,18 @@
 #include "halley.h"
 
 // (-1/e) rounded towards +Inf
-static constexpr double EM_UP = -0.3678794411714423;
+static constexpr float EM_UP = -0.36787942f;
 
-ReferenceW::ReferenceW()
+ReferenceWf::ReferenceWf()
 {
-	mpfr_init2(m, 53);
-	mpfr_init2(yLowP0, 53);
-	mpfr_init2(yHighP0, 53);
-	mpfr_init2(yLowP1, 150);
-	mpfr_init2(yHighP1, 150);
+	mpfr_init2(m, 24);
+	mpfr_init2(yLowP0, 24);
+	mpfr_init2(yHighP0, 24);
+	mpfr_init2(yLowP1, 60);
+	mpfr_init2(yHighP1, 60);
 }
 
-ReferenceW::~ReferenceW()
+ReferenceWf::~ReferenceWf()
 {
 	mpfr_clear(m);
 	mpfr_clear(yLowP0);
@@ -36,45 +36,45 @@ ReferenceW::~ReferenceW()
 	mpfr_clear(yHighP1);
 }
 
-Interval ReferenceW::W0(double x)
+Intervalf ReferenceWf::W0(float x)
 {
 	// Edge cases
 	if (x < EM_UP)
 		return { NAN, NAN };
 	if (x == INFINITY)
-		return { DBL_MAX, INFINITY };
+		return { FLT_MAX, INFINITY };
 
 	// Save current rounding mode
 	int initialRnd = fegetround();
 
 	// === Compute Bracket ===
 	// high = ln(x + 1)
-	double high;
-	if (x > 3.0)
-		high = Sleef_log_u10(x);
+	float high;
+	if (x > 3.0f)
+		high = Sleef_logf_u10(x);
 	else
-		high = Sleef_log1p_u10(x);
+		high = Sleef_log1pf_u10(x);
 	high = std::nextafter(high, INFINITY);
 
-	double low;
+	float low;
 	if (x > 3)
 	{
 		// low = ln(x) - ln(ln(x))
 		auto [logDown, logUp] = LogUpDown(x);
-		logUp = std::nextafter(Sleef_log_u10(logUp), INFINITY);
+		logUp = std::nextafter(Sleef_logf_u10(logUp), INFINITY);
 
 		low = sub(logDown, logUp, FE_DOWNWARD);
 	}
 	else if (x >= 0)
 	{
 		// low = x / (x + 1)
-		double xp1 = add(x, 1, FE_UPWARD);
+		float xp1 = add(x, 1, FE_UPWARD);
 		low = div(x, xp1, FE_DOWNWARD);
 	}
 	else
 	{
 		// low = x * (1 - x * 5)
-		double x5 = mul(x, 5, FE_DOWNWARD);
+		float x5 = mul(x, 5, FE_DOWNWARD);
 		low = sub(1, x5, FE_UPWARD);
 		low = mul(low, x, FE_DOWNWARD);
 
@@ -84,7 +84,7 @@ Interval ReferenceW::W0(double x)
 	}
 
 	// === Halley Iterations ===
-	for (size_t i = 0; i < 4; i++)
+	for (size_t i = 0; i < 3; i++)
 	{
 		low = HalleyW0(x, low, false);
 		high = HalleyW0(x, high, true);
@@ -92,7 +92,7 @@ Interval ReferenceW::W0(double x)
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, true);
-	assert(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY));
+	assert(ret.inf == ret.sup || ret.sup == std::nextafterf(ret.inf, INFINITY));
 
 	// Restore rounding mode
 	fesetround(initialRnd);
@@ -100,7 +100,7 @@ Interval ReferenceW::W0(double x)
 	return ret;
 }
 
-Interval ReferenceW::Wm1(double x)
+Intervalf ReferenceWf::Wm1(float x)
 {
 	// Edge cases
 	if (x < EM_UP || x >= 0)
@@ -119,13 +119,13 @@ Interval ReferenceW::Wm1(double x)
 	uUp = sub(uUp, 1, FE_UPWARD);
 
 	// low = -1 - (sqrt(u * 2) + u);
-	double low = add(uUp, uUp, FE_UPWARD);
+	float low = add(uUp, uUp, FE_UPWARD);
 	low = sqrt(low, FE_UPWARD);
 	low = add(low, uUp, FE_UPWARD);
 	low = sub(-1, low, FE_DOWNWARD);
 
 	// high = -1 - (sqrt(u * 2) + u * 2 / 3)
-	double high = add(uDown, uDown, FE_DOWNWARD);
+	float high = add(uDown, uDown, FE_DOWNWARD);
 	high = sqrt(high, FE_DOWNWARD);
 	uDown = add(uDown, uDown, FE_DOWNWARD);
 	uDown = div(uDown, 3, FE_DOWNWARD);
@@ -149,9 +149,9 @@ Interval ReferenceW::Wm1(double x)
 	return ret;
 }
 
-Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
+Sign ReferenceWf::GetMidpointSign(float x, float midpoint, bool useHighPrec)
 {
-	mpfr_set_d(m, midpoint, MPFR_RNDN);
+	mpfr_set_flt(m, midpoint, MPFR_RNDN);
 
 	mpfr_t& yLow = useHighPrec ? yLowP1 : yLowP0;
 	mpfr_t& yHigh = useHighPrec ? yHighP1 : yHighP0;
@@ -180,12 +180,12 @@ Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 	return Sign::Inconclusive;
 }
 
-Interval ReferenceW::Bisection(double x, double low, double high, bool increasing)
+Intervalf ReferenceWf::Bisection(float x, float low, float high, bool increasing)
 {
 	for (;;)
 	{
 		// m = (low + high) / 2
-		double m = std::midpoint(low, high);
+		float m = std::midpoint(low, high);
 
 		if (m == low || m == high)
 			break; // Bracket cannot be narrowed any further
