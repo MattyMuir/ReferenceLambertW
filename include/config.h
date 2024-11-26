@@ -1,2 +1,2 @@
 #pragma once
-#define REFERENCEW_STATS 0
+#define REFERENCEW_STATS 1

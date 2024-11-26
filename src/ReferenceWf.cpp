@@ -140,6 +140,8 @@ Intervalf ReferenceWf::Wm1(float x)
 	uDown = div(uDown, 3, FE_DOWNWARD);
 	high = add(high, uDown, FE_DOWNWARD);
 	high = sub(-1, high, FE_UPWARD);
+	if (!std::isfinite(high))
+		high = -1.0f;
 
 	// === Halley Iterations ===
 	size_t numIter = ceil(log10(-x) * -0.3 + 1.5);

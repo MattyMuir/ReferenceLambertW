@@ -9,11 +9,12 @@
 #include "Timer.h"
 
 // === Bench Config ===
-#define BRANCH W0
+#define BRANCH Wm1
+using BenchTy = float;
+// ====================
+
 #define DOMAP(x) ExpMap##x
 #define MAP(x) DOMAP(x)
-using BenchTy = double;
-// ====================
 
 template <typename Ty>
 using Function1D = Ty(*)(Ty);
@@ -92,8 +93,8 @@ void Bench()
 	// === Parameters ===
 	static constexpr size_t Num = 10'000;
 	static constexpr size_t Repeats = 30;
-	BenchTy binMin = -20;
-	BenchTy binMax = 100;
+	BenchTy binMin = -10;
+	BenchTy binMax = 40;
 	BenchTy binWidth = 0.5;
 	// ==================
 
@@ -118,8 +119,8 @@ void Stats()
 #if REFERENCEW_STATS
 	// === Parameters ===
 	static constexpr size_t Num = 10'000;
-	BenchTy binMin = -20;
-	BenchTy binMax = 100;
+	BenchTy binMin = -10;
+	BenchTy binMax = 40;
 	BenchTy binWidth = 0.5;
 	// ==================
 
@@ -140,5 +141,5 @@ void Stats()
 
 int main()
 {
-	Stats();
+	Bench();
 }
