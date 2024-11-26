@@ -21,8 +21,8 @@ endif()
 # === Projects ===
 project("ReferenceLambertW")
 add_subdirectory("src")
-
 add_subdirectory("examples")
+add_subdirectory("bench")
 
 # === Tests ===
 enable_testing()

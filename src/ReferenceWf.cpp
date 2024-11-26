@@ -1,3 +1,4 @@
+#include "../include/config.h"
 #include "ReferenceWf.h"
 
 #include <cassert>
@@ -38,6 +39,10 @@ ReferenceWf::~ReferenceWf()
 
 Intervalf ReferenceWf::W0(float x)
 {
+#if REFERENCEW_STATS
+	numEvals++;
+#endif
+
 	// Edge cases
 	if (x < EM_UP)
 		return { NAN, NAN };
@@ -102,6 +107,10 @@ Intervalf ReferenceWf::W0(float x)
 
 Intervalf ReferenceWf::Wm1(float x)
 {
+#if REFERENCEW_STATS
+	numEvals++;
+#endif
+
 	// Edge cases
 	if (x < EM_UP || x >= 0)
 		return { NAN, NAN };
@@ -133,7 +142,8 @@ Intervalf ReferenceWf::Wm1(float x)
 	high = sub(-1, high, FE_UPWARD);
 
 	// === Halley Iterations ===
-	for (size_t i = 0; i < 3; i++)
+	size_t numIter = ceil(log10(-x) * -0.3 + 1.5);
+	for (size_t i = 0; i < 4; i++)
 	{
 		low = HalleyWm1(x, low, false);
 		high = HalleyWm1(x, high, true);
@@ -149,8 +159,30 @@ Intervalf ReferenceWf::Wm1(float x)
 	return ret;
 }
 
+#if REFERENCEW_STATS
+double ReferenceWf::GetHighPrecRate() const
+{
+	return (double)numHighPrec / totalBisections;
+}
+
+size_t ReferenceWf::GetMaxBisections() const
+{
+	return maxBisections;
+}
+
+double ReferenceWf::GetAvgBisections() const
+{
+	return (double)totalBisections / numEvals;
+}
+#endif
+
 Sign ReferenceWf::GetMidpointSign(float x, float midpoint, bool useHighPrec)
 {
+#if REFERENCEW_STATS
+	if (useHighPrec)
+		numHighPrec++;
+#endif
+
 	mpfr_set_flt(m, midpoint, MPFR_RNDN);
 
 	mpfr_t& yLow = useHighPrec ? yLowP1 : yLowP0;
@@ -182,8 +214,16 @@ Sign ReferenceWf::GetMidpointSign(float x, float midpoint, bool useHighPrec)
 
 Intervalf ReferenceWf::Bisection(float x, float low, float high, bool increasing)
 {
+#if REFERENCEW_STATS
+	size_t b = 0;
+#endif
+
 	for (;;)
 	{
+#if REFERENCEW_STATS
+		b++;
+#endif
+
 		// m = (low + high) / 2
 		float m = std::midpoint(low, high);
 
@@ -208,6 +248,11 @@ Intervalf ReferenceWf::Bisection(float x, float low, float high, bool increasing
 		else
 			low = m;
 	}
+
+#if REFERENCEW_STATS
+	maxBisections = std::max(maxBisections, b);
+	totalBisections += b;
+#endif
 
 	return { low, high };
 }

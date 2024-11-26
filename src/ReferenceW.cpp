@@ -1,3 +1,4 @@
+#include "../include/config.h"
 #include "ReferenceW.h"
 
 #include <cassert>
@@ -5,8 +6,8 @@
 #include <cmath>
 #include <cfenv>
 
-#include <iomanip>
 #include <iostream>
+#include <iomanip>
 #include <numeric>
 
 #define SLEEF_STATIC_LIBS
@@ -38,6 +39,10 @@ ReferenceW::~ReferenceW()
 
 Interval ReferenceW::W0(double x)
 {
+#if REFERENCEW_STATS
+	numEvals++;
+#endif
+
 	// Edge cases
 	if (x < EM_UP)
 		return { NAN, NAN };
@@ -102,6 +107,10 @@ Interval ReferenceW::W0(double x)
 
 Interval ReferenceW::Wm1(double x)
 {
+#if REFERENCEW_STATS
+	numEvals++;
+#endif
+
 	// Edge cases
 	if (x < EM_UP || x >= 0)
 		return { NAN, NAN };
@@ -149,8 +158,30 @@ Interval ReferenceW::Wm1(double x)
 	return ret;
 }
 
+#if REFERENCEW_STATS
+double ReferenceW::GetHighPrecRate() const
+{
+	return (double)numHighPrec / totalBisections;
+}
+
+size_t ReferenceW::GetMaxBisections() const
+{
+	return maxBisections;
+}
+
+double ReferenceW::GetAvgBisections() const
+{
+	return (double)totalBisections / numEvals;
+}
+#endif
+
 Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 {
+#if REFERENCEW_STATS
+	if (useHighPrec)
+		numHighPrec++;
+#endif
+
 	mpfr_set_d(m, midpoint, MPFR_RNDN);
 
 	mpfr_t& yLow = useHighPrec ? yLowP1 : yLowP0;
@@ -182,8 +213,16 @@ Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 
 Interval ReferenceW::Bisection(double x, double low, double high, bool increasing)
 {
+#if REFERENCEW_STATS
+	size_t b = 0;
+#endif
+
 	for (;;)
 	{
+#if REFERENCEW_STATS
+		b++;
+#endif
+
 		// m = (low + high) / 2
 		double m = std::midpoint(low, high);
 
@@ -208,6 +247,11 @@ Interval ReferenceW::Bisection(double x, double low, double high, bool increasin
 		else
 			low = m;
 	}
+
+#if REFERENCEW_STATS
+	maxBisections = std::max(maxBisections, b);
+	totalBisections += b;
+#endif
 
 	return { low, high };
 }

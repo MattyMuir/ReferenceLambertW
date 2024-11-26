@@ -13,10 +13,19 @@ public:
 	Interval W0(double x);
 	Interval Wm1(double x);
 
-	Sign GetMidpointSign(double x, double midpoint, bool useHighPrec);
+#if REFERENCEW_STATS
+	double GetHighPrecRate() const;
+	size_t GetMaxBisections() const;
+	double GetAvgBisections() const;
+#endif
 
 private:
 	mpfr_t m, yLowP0, yHighP0, yLowP1, yHighP1;
 
+#if REFERENCEW_STATS
+	size_t numEvals = 0, numHighPrec = 0, maxBisections = 0, totalBisections = 0;
+#endif
+
+	Sign GetMidpointSign(double x, double midpoint, bool useHighPrec);
 	Interval Bisection(double x, double low, double high, bool increasing);
 };

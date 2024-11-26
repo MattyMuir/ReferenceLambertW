@@ -3,13 +3,14 @@
 #include <iostream>
 #include <vector>
 #include <format>
+#include <random>
 
 #include <ReferenceLambertW.h>
 
-constexpr size_t pOrder = 9;
+constexpr size_t pOrder = 8;
 constexpr size_t qOrder = 7;
 constexpr size_t numCoeffs = pOrder + qOrder + 1;
-constexpr double yOffset = -1;
+constexpr double yOffset = 0.567143290409783872999968662210;
 
 struct DerivState
 {
@@ -38,6 +39,27 @@ static double sign(double x)
 	return (x > 0) ? 1.0 : -1.0;
 }
 
+template <typename Ty>
+Ty EvaluateRational(Ty x, const std::vector<Ty>& coeffs, Ty* numer_ = nullptr, Ty* denom_ = nullptr)
+{
+	// Evaluate rational
+	Ty numer = coeffs[pOrder];
+	for (size_t i = 0; i < pOrder; i++)
+		numer = numer * x + coeffs[pOrder - 1 - i];
+
+	Ty denom = 1;
+	for (size_t i = 0; i < qOrder; i++)
+		denom = denom * x + coeffs[pOrder + qOrder - i];
+
+	// Calculate error
+	Ty approx = numer / denom + (Ty)yOffset;
+
+	if (numer_) *numer_ = numer;
+	if (denom_) *denom_ = denom;
+
+	return approx;
+}
+
 std::pair<double, std::vector<double>> GetMaxError(const std::vector<double>& xs, const std::vector<double>& ys, const std::vector<double>& ps, const std::vector<double>& scales)
 {
 	// Calculate coefficients
@@ -49,19 +71,10 @@ std::pair<double, std::vector<double>> GetMaxError(const std::vector<double>& xs
 	for (size_t i = 0; i < xs.size(); i++)
 	{
 		double x = xs[i];
+		double numer, denom;
+		double approx = EvaluateRational(x, coeffs, &numer, &denom);
+		
 		double y = ys[i];
-
-		// Evaluate rational
-		double numer = coeffs[pOrder];
-		for (size_t i = 0; i < pOrder; i++)
-			numer = numer * x + coeffs[pOrder - 1 - i];
-
-		double denom = 1;
-		for (size_t i = 0; i < qOrder; i++)
-			denom = denom * x + coeffs[pOrder + qOrder - i];
-
-		// Calculate error
-		double approx = numer / denom + yOffset;
 		double signedError = (approx - y) / y;
 		double error = abs(signedError);
 		if (error > maxError)
@@ -104,39 +117,115 @@ double Wm1(double x)
 
 double Func(double x)
 {
-	return Wm1(-exp(-0.5 * (x * x + 2)));
+	//return Wm1(-exp(-0.5 * (x * x + 2)));
+	return W0(exp(x));
+}
+
+float fFunc(float x)
+{
+	static ReferenceWf evaluator;
+	return evaluator.Wm1(-exp(-0.5f * (x * x + 2))).inf;
+}
+
+uint32_t ULPDistance(float a, float b)
+{
+	if (a > b)
+		std::swap(a, b);
+	uint32_t aPunn = std::bit_cast<uint32_t>(a);
+	uint32_t bPunn = std::bit_cast<uint32_t>(b);
+
+	if (a >= 0 && b >= 0)
+		return bPunn - aPunn;
+	if (a < 0 && b < 0)
+		return aPunn - bPunn;
+
+	return (aPunn - 0x80000000) + bPunn;
+}
+
+std::vector<float> FloatRefine(const std::vector<double>& xs_, const std::vector<double>& dCoeffs)
+{
+	// Round xs
+	std::vector<float> xs;
+	for (double x : xs_)
+		xs.push_back((float)x);
+
+	// Calculate ys
+	std::vector<float> ys;
+	for (float x : xs)
+		ys.push_back((float)Func(x));
+
+	// Round coefficients
+	std::vector<float> bestCoeffs;
+	for (double c : dCoeffs)
+		bestCoeffs.push_back((float)c);
+
+	uint32_t bestError = 10'000;
+	static std::mt19937_64 gen{ std::random_device{}() };
+	static std::uniform_real_distribution<float> branch{ 0.0f, 1.0f };
+	static std::normal_distribution<float> dist{ 1, 1e-5 };
+	for (size_t i = 0; i < 1'000'000; i++)
+	{
+		std::vector<float> newCoeffs{ bestCoeffs };
+		for (float& coeff : newCoeffs)
+		{
+			if (branch(gen) < 0.1f)
+				coeff = coeff * dist(gen);
+		}
+
+		// Calculate max error
+		uint32_t maxError = 0;
+		for (size_t i = 0; i < xs.size(); i++)
+		{
+			float x = xs[i];
+			float y = ys[i];
+
+			float approx = EvaluateRational(x, newCoeffs);
+			uint32_t err = ULPDistance(approx, y);
+
+			if (err > maxError)
+				maxError = err;
+		}
+
+		if (maxError < bestError)
+		{
+			bestError = maxError;
+			bestCoeffs = newCoeffs;
+			std::cout << "Error: " << maxError << '\n';
+		}
+	}
+
+	return bestCoeffs;
 }
 
 int main()
 {
 	// Prepare data
 	std::vector<double> xs, ys;
-	for (double x = 0; x < 38; x += 0.05)
+	for (double x = 0; x < 79.52; x += 0.05)
 	{
 		xs.push_back(x);
 		ys.push_back(Func(x));
 	}
 
 	// Initial parameters
-	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 	std::vector<double> scales{
 		0,
-		-1014581.79223,
-		-1383122.26311,
-		-706686.04517,
-		-177742.636329,
-		-23289.8291289,
-		-2120.95023686,
-		-367.209806316,
-		-30.6376170252,
-		-0.499974590377,
-		1014579.89559,
-		1044943.94359,
-		330146.644298,
-		42485.7951511,
-		3538.73333116,
-		715.158920241,
-		61.2500329105
+		11087152.7748,
+		8486181.12685,
+		3416914.71516,
+		813083.430535,
+		115397.465193,
+		9766.42319992,
+		230.594326831,
+		0.998694488778,
+		30636450.9383,
+		17210757.1717,
+		6054509.95539,
+		1212699.80199,
+		155314.797354,
+		10977.9615602,
+		237.729006177
 	};
 
 	if (ps.size() != scales.size() || ps.size() != numCoeffs)
@@ -149,7 +238,7 @@ int main()
 		auto [initialError, derivs] = GetMaxError(xs, ys, ps, scales);
 
 		// Stop condition
-		if (log10(initialError) < -7.46)
+		if (log10(initialError) < -9)
 			break;
 
 		if (iter % 1000 == 0)
@@ -157,7 +246,7 @@ int main()
 
 		// Take steps
 		for (size_t pi = 0; pi < numCoeffs; pi++)
-			ps[pi] -= derivs[pi] * 1e-9;
+			ps[pi] -= derivs[pi] * 1e-8;
 	}
 
 	// Get coefficients
@@ -173,4 +262,20 @@ int main()
 	for (size_t i = pOrder + 1; i < numCoeffs; i++)
 		std::cout << std::format("{}\n", coeffs[i]);
 	std::cout << "1\n";
+
+#if 0
+	std::cout << "=== Refining ===\n";
+	auto fCoeffs = FloatRefine(xs, coeffs);
+
+	// Print numerator coefficients
+	for (size_t i = 0; i < pOrder + 1; i++)
+		std::cout << std::format("{}\n", fCoeffs[i]);
+
+	std::cout << "\n\n";
+
+	// Print denominator coefficients
+	for (size_t i = pOrder + 1; i < numCoeffs; i++)
+		std::cout << std::format("{}\n", fCoeffs[i]);
+	std::cout << "1\n";
+#endif
 }

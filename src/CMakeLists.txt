@@ -35,16 +35,15 @@ install(TARGETS ${PROJECT_NAME}
 message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
 
 # Export includes
-install(FILES "../include/ReferenceW.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(DIRECTORY "../include"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(DIRECTORY "../src"
         DESTINATION ${CMAKE_INSTALL_PREFIX}
         FILES_MATCHING
         PATTERN "*.h")
 
 # CMake config name, namespace and path
-install(
-    EXPORT "${PROJECT_NAME}Config"
-    FILE "${PROJECT_NAME}Config.cmake"
-    NAMESPACE ReferenceLambertW::
-    DESTINATION cmake
-)
+install(EXPORT "${PROJECT_NAME}Config"
+        FILE "${PROJECT_NAME}Config.cmake"
+        NAMESPACE ReferenceLambertW::
+        DESTINATION cmake)

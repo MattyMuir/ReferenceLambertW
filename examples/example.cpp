@@ -14,7 +14,7 @@ void SpeedTest(size_t arrSize)
 	// Prepare test data
 	std::vector<Ty> data;
 	static std::mt19937_64 gen{ std::random_device{}() };
-	std::uniform_real_distribution<Ty> dist{ 10, 100 };
+	std::uniform_real_distribution<Ty> dist{ -0.35, -0.2 };
 	for (size_t i = 0; i < arrSize; i++)
 		data.push_back(dist(gen));
 
@@ -24,7 +24,7 @@ void SpeedTest(size_t arrSize)
 	TIMER(t);
 	Ty _ = 0;
 	for (Ty d : data)
-		_ += evaluator.W0(d).inf;
+		_ += evaluator.Wm1(d).inf;
 	STOP_LOG(t);
 
 	// Make sure evaluations are not optimized away
