@@ -3,6 +3,7 @@
 #include <charconv>
 #include <random>
 #include <format>
+#include <functional>
 
 #include <mpfr.h>
 #include <ReferenceLambertW.h>
@@ -12,7 +13,7 @@
 #define ERROR(msg) { std::cout << msg << '\n'; return 1; }
 
 template <typename Ty>
-Ty GetEmUp()
+consteval Ty GetEmUp()
 {
 	if constexpr (std::is_same_v<Ty, float>)
 		return -0.36787942f;
@@ -75,21 +76,15 @@ bool WexpwIsPositive(Ty w, Ty x)
 }
 
 template <typename Ty>
-int RunTest(int64_t branch)
+int RunTest(int64_t branch, std::function<Ty()> rand)
 {
-	Ty low = GetEmUp<Ty>();
-	Ty high = (branch == 0) ? INFINITY : 0;
-
-	static std::mt19937_64 gen{ std::random_device{}() };
-	ReciprocalDistributionEx<Ty> dist{ low, high, false };
-
 	// Construct evaluators
 	ReferenceW evaluatord;
 	ReferenceWf evaluatorf;
 
 	for (size_t i = 0; i < 500'000; i++)
 	{
-		Ty x = dist(gen);
+		Ty x = rand();
 		std::cout << x << '\n';
 		
 		if constexpr (std::is_same_v<Ty, float>)
@@ -132,6 +127,34 @@ int RunTest(int64_t branch)
 				return 1;
 			}
 		}
+	}
+
+	return 0;
+}
+
+template <typename Ty>
+int RunTest(int64_t branch)
+{
+	static std::mt19937_64 gen{ std::random_device{}() };
+
+	// ReciprocalDist test
+	{
+		static Ty low = GetEmUp<Ty>();
+		static Ty high = (branch == 0) ? INFINITY : 0;
+
+		static ReciprocalDistributionEx<Ty> dist{ low, high, false };
+		if (RunTest<Ty>(branch, []() { return dist(gen); }))
+			return 1;
+	}
+
+	// Near branch test
+	{
+		static Ty low = std::is_same_v<Ty, float> ? -15 : -35;
+		static Ty high = -1;
+
+		static std::uniform_real_distribution<Ty> dist{ low, high };
+		if (RunTest<Ty>(branch, [&]() { return GetEmUp<Ty>() + exp(dist(gen)); }))
+			return 1;
 	}
 
 	return 0;

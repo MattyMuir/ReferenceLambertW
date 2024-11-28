@@ -53,5 +53,9 @@ void Profiling(size_t arrSize, size_t numIter)
 
 int main()
 {
-	SpeedTest<float>(100'000);
+	double x = std::numeric_limits<double>::denorm_min();
+
+	ReferenceW evaluator;
+	auto[inf, sup] = evaluator.W0(x);
+	std::cout << std::format("{} - {}", inf, sup);
 }

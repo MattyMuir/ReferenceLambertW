@@ -16,8 +16,9 @@
 #include "rndutil.h"
 #include "halley.h"
 
-// (-1/e) rounded towards +Inf
-static constexpr double EM_UP = -0.3678794411714423;
+static constexpr double EM_UP = -0.3678794411714423; // (-1/e) rounded towards +Inf
+static constexpr double E2_DOWN = 5.43656365691809; // e*2 rounded towards -Inf
+static constexpr double E2_UP = 5.436563656918091; // e*2 rounded towards +Inf
 
 ReferenceW::ReferenceW()
 {
@@ -53,13 +54,27 @@ Interval ReferenceW::W0(double x)
 	int initialRnd = fegetround();
 
 	// === Compute Bracket ===
-	// high = ln(x + 1)
 	double high;
 	if (x > 3.0)
+	{
+		// high = ln(x)
 		high = Sleef_log_u10(x);
-	else
+		high = std::nextafter(high, INFINITY);
+	}
+	else if (x > -0.2875)
+	{
+		// high = ln(1 + x)
 		high = Sleef_log1p_u10(x);
-	high = std::nextafter(high, INFINITY);
+		high = std::nextafter(high, INFINITY);
+	}
+	else
+	{
+		// high = -1 + sqrt(2ex + 2)
+		high = mul(x, E2_DOWN, FE_UPWARD);
+		high = add(high, 2, FE_UPWARD);
+		high = sqrt(high, FE_UPWARD);
+		high = sub(high, 1, FE_UPWARD);
+	}
 
 	double low;
 	if (x > 3)
@@ -76,23 +91,46 @@ Interval ReferenceW::W0(double x)
 		double xp1 = add(x, 1, FE_UPWARD);
 		low = div(x, xp1, FE_DOWNWARD);
 	}
+	else if (x > -0.3019)
+	{
+		// low = x * (1 - x * 2.4)
+		double xt = mul(x, 2.4, FE_DOWNWARD);
+		low = sub(1, xt, FE_UPWARD);
+		low = mul(low, x, FE_DOWNWARD);
+	}
 	else
 	{
-		// low = x * (1 - x * 5)
-		double x5 = mul(x, 5, FE_DOWNWARD);
-		low = sub(1, x5, FE_UPWARD);
-		low = mul(low, x, FE_DOWNWARD);
+		// low = -1 + sqrt(2ex + 2) - 1/3 * (2ex + 2)
+		double reta = mul(x, E2_UP, FE_DOWNWARD);
+		reta = add(reta, 2, FE_DOWNWARD);
+		reta = sqrt(reta, FE_DOWNWARD);
+
+		double eta = mul(x, E2_DOWN, FE_UPWARD);
+		eta = add(eta, 2, FE_UPWARD);
+		eta = div(eta, 3, FE_UPWARD);
+
+		low = sub(reta, eta, FE_DOWNWARD);
+		low = add(low, -1, FE_DOWNWARD);
 
 		// Clamp low above -1
-		if (low < -1)
-			low = -1;
+		if (low < -1) low = -1;
 	}
 
 	// === Halley Iterations ===
-	for (size_t i = 0; i < 4; i++)
+	while (low != 0)
 	{
-		low = HalleyW0(x, low, false);
-		high = HalleyW0(x, high, true);
+		double newLow = HalleyW0(x, low, false);
+		bool stop = (abs((newLow - low) / low) < 1e-7);
+		low = newLow;
+		if (stop) break;
+	}
+
+	while (high != 0)
+	{
+		double newHigh = HalleyW0(x, high, true);
+		bool stop = (abs((newHigh - high) / high) < 1e-7);
+		high = newHigh;
+		if (stop) break;
 	}
 
 	// === Bisection ===

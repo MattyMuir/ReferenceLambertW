@@ -9,8 +9,8 @@
 #include "Timer.h"
 
 // === Bench Config ===
-#define BRANCH Wm1
-using BenchTy = float;
+#define BRANCH W0
+using BenchTy = double;
 // ====================
 
 #define DOMAP(x) ExpMap##x
@@ -94,8 +94,8 @@ void Bench()
 	static constexpr size_t Num = 10'000;
 	static constexpr size_t Repeats = 30;
 	BenchTy binMin = -10;
-	BenchTy binMax = 40;
-	BenchTy binWidth = 0.5;
+	BenchTy binMax = 400;
+	BenchTy binWidth = 1;
 	// ==================
 
 	std::ofstream file{ "bench.csv" };
@@ -118,10 +118,10 @@ void Stats()
 {
 #if REFERENCEW_STATS
 	// === Parameters ===
-	static constexpr size_t Num = 10'000;
+	static constexpr size_t Num = 1'000;
 	BenchTy binMin = -10;
-	BenchTy binMax = 40;
-	BenchTy binWidth = 0.5;
+	BenchTy binMax = 400;
+	BenchTy binWidth = 1;
 	// ==================
 
 	std::ofstream file{ "stats.csv" };
@@ -130,7 +130,7 @@ void Stats()
 	for (BenchTy min = binMin; min < binMax; min += binWidth)
 	{
 		BenchTy max = min + binWidth;
-		auto [highPrecRate, maxBisections, avgBisections] = RunStats(min, max, MAP(BRANCH), 100);
+		auto [highPrecRate, maxBisections, avgBisections] = RunStats(min, max, MAP(BRANCH), Num);
 
 		file << std::format("{:.3f},{:.3f},{:.10f},{},{:.10f}\n", min, max, highPrecRate, maxBisections, avgBisections);
 		file << std::flush;
@@ -142,4 +142,6 @@ void Stats()
 int main()
 {
 	Bench();
+	Stats();
+	//double time = RunBench()
 }
