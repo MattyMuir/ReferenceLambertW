@@ -9,7 +9,7 @@
 #include "Timer.h"
 
 // === Bench Config ===
-#define BRANCH W0
+#define BRANCH Wm1
 using BenchTy = double;
 // ====================
 
@@ -85,7 +85,11 @@ double ExpMapW0(double x)
 double ExpMapWm1(double x)
 {
 	static constexpr double EM_UP = -0.3678794411714423;
-	return EM_UP / (1 + exp(x));
+	static constexpr double EM_SCALE = -7.0954741622847041390e-23;
+	if (x < 700)
+		return EM_UP / (1 + exp(x));
+	
+	return EM_SCALE / (1 + exp(x - 50));
 }
 
 void Bench()
@@ -93,9 +97,9 @@ void Bench()
 	// === Parameters ===
 	static constexpr size_t Num = 10'000;
 	static constexpr size_t Repeats = 30;
-	BenchTy binMin = -10;
-	BenchTy binMax = 400;
-	BenchTy binWidth = 1;
+	BenchTy binMin = -30;
+	BenchTy binMax = 30;
+	BenchTy binWidth = 0.5;
 	// ==================
 
 	std::ofstream file{ "bench.csv" };
@@ -106,7 +110,7 @@ void Bench()
 		BenchTy max = min + binWidth;
 		double time = 0.0;
 		for (size_t i = 0; i < Repeats; i++)
-			time += RunBench(min, max, MAP(BRANCH), 100);
+			time += RunBench(min, max, MAP(BRANCH), Num);
 		time /= Repeats;
 
 		file << std::format("{:.3f},{:.3f},{:.10f}\n", min, max, time);
@@ -118,10 +122,10 @@ void Stats()
 {
 #if REFERENCEW_STATS
 	// === Parameters ===
-	static constexpr size_t Num = 1'000;
-	BenchTy binMin = -10;
-	BenchTy binMax = 400;
-	BenchTy binWidth = 1;
+	static constexpr size_t Num = 10'000;
+	BenchTy binMin = -30;
+	BenchTy binMax = 30;
+	BenchTy binWidth = 0.5;
 	// ==================
 
 	std::ofstream file{ "stats.csv" };
@@ -142,6 +146,5 @@ void Stats()
 int main()
 {
 	Bench();
-	Stats();
-	//double time = RunBench()
+	//Stats();
 }

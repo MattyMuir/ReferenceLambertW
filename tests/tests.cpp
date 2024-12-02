@@ -10,7 +10,7 @@
 
 #include "ReciprocalDistributionEx.h"
 
-#define ERROR(msg) { std::cout << msg << '\n'; return 1; }
+#define ERROR(msg) { std::cerr << msg << '\n'; return 1; }
 
 template <typename Ty>
 consteval Ty GetEmUp()
@@ -78,14 +78,17 @@ bool WexpwIsPositive(Ty w, Ty x)
 template <typename Ty>
 int RunTest(int64_t branch, std::function<Ty()> rand)
 {
+	// === Parameters ===
+	static constexpr size_t Num = 500'000;
+	// ==================
+
 	// Construct evaluators
 	ReferenceW evaluatord;
 	ReferenceWf evaluatorf;
 
-	for (size_t i = 0; i < 500'000; i++)
+	for (size_t i = 0; i < Num; i++)
 	{
 		Ty x = rand();
-		std::cout << x << '\n';
 		
 		if constexpr (std::is_same_v<Ty, float>)
 		{

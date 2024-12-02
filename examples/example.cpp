@@ -53,9 +53,9 @@ void Profiling(size_t arrSize, size_t numIter)
 
 int main()
 {
-	double x = std::numeric_limits<double>::denorm_min();
+	double x = -0.36;
 
 	ReferenceW evaluator;
-	auto[inf, sup] = evaluator.W0(x);
+	auto[inf, sup] = evaluator.Wm1(x);
 	std::cout << std::format("{} - {}", inf, sup);
 }

@@ -157,34 +157,7 @@ Interval ReferenceW::Wm1(double x)
 	int initialRnd = fegetround();
 
 	// === Compute Bracket ===
-	auto [uUp, uDown] = LogUpDown(-x);
-
-	uDown = -uDown;
-	uDown = sub(uDown, 1, FE_DOWNWARD);
-
-	uUp = -uUp;
-	uUp = sub(uUp, 1, FE_UPWARD);
-
-	// low = -1 - (sqrt(u * 2) + u);
-	double low = add(uUp, uUp, FE_UPWARD);
-	low = sqrt(low, FE_UPWARD);
-	low = add(low, uUp, FE_UPWARD);
-	low = sub(-1, low, FE_DOWNWARD);
-
-	// high = -1 - (sqrt(u * 2) + u * 2 / 3)
-	double high = add(uDown, uDown, FE_DOWNWARD);
-	high = sqrt(high, FE_DOWNWARD);
-	uDown = add(uDown, uDown, FE_DOWNWARD);
-	uDown = div(uDown, 3, FE_DOWNWARD);
-	high = add(high, uDown, FE_DOWNWARD);
-	high = sub(-1, high, FE_UPWARD);
-
-	// === Halley Iterations ===
-	for (size_t i = 0; i < 3; i++)
-	{
-		low = HalleyWm1(x, low, false);
-		high = HalleyWm1(x, high, true);
-	}
+	auto [low, high] = Wm1Bracket(x);
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, false);
@@ -212,6 +185,126 @@ double ReferenceW::GetAvgBisections() const
 	return (double)totalBisections / numEvals;
 }
 #endif
+
+static inline double AddEm(double x)
+{
+	static constexpr double emHigh = 0.36787944117144232160;
+	static constexpr double emLow = -1.2428753672788363168e-17;
+
+	return (x + emHigh) + emLow;
+}
+
+static inline double NearBranchWm1(double x)
+{
+	// === Constants ===
+	static constexpr double s2e = 2.331643981597124;
+	static constexpr double P[] = {
+		-0.9999999999999999,
+		-1.0000000000001505,
+		-0.3333333333112154,
+		-0.15277777908701176,
+		-0.07962958804769303,
+		-0.0445031235579835,
+		-0.02597432503406348,
+		-0.015728030108091574,
+		-0.009031309914783386,
+		-0.008702394675700187,
+		0.005169843845676331,
+		-0.02414898256188974,
+		0.03559281100127844,
+		-0.044160933247669634,
+		0.030269166389388674,
+		-0.011279992858844562
+	};
+	// =================
+
+	double p = sqrt(AddEm(x)) * s2e;
+	double w = P[15];
+	for (size_t i = 0; i < 15; i++)
+		w = w * p + P[14 - i];
+
+	return w;
+}
+
+std::pair<double, double> ReferenceW::Wm1Bracket(double x)
+{
+	// === Constants ===
+	static constexpr double CM13_DOWN = -0.33333333333333337;
+	static constexpr double C23_DOWN = 0.6666666666666666;
+	static constexpr double C23_UP = 0.6666666666666667;
+	static constexpr double N = 50;
+	static constexpr double EN_DOWN = 5.184705528587072e+21;
+	static constexpr double EN_UP = 5.184705528587073e+21;
+	static constexpr double P[] = {
+		0,
+		-5.415413805902706,
+		-2.787876451002007,
+		-0.4992978139443087
+	};
+	static constexpr double Q = 5.410664283026123;
+	// =================
+
+	double w;
+	if (x > -0.318092372804)
+	{
+		// Initial approximation
+		double t = sqrt(-2 - 2 * log(-x));
+		w = P[3];
+		for (size_t i = 0; i < 3; i++)
+			w = w * t + P[2 - i];
+		w = w / (t + Q) - 1.0;
+
+		// Fritsch Iteration
+		double zn;
+		if (x > -1e-300)
+			zn = log((x * 4611686018427387904.0) / w) - 42.975125194716609184 - w;
+		else
+			zn = log(x / w) - w;
+		double temp = 1.0 + w;
+		double temp2 = temp + (2.0 / 3.0) * zn;
+		temp2 = 2.0 * temp * temp2;
+		w = w * (1.0 + (zn / temp) * (temp2 - zn) / (temp2 - 2.0 * zn));
+	}
+	else
+		w = NearBranchWm1(x);
+
+	// Error bound
+	auto [logDown, logUp] = LogUpDown(-x);
+
+	double rtUp = sqrt(sub(-2, mul(logDown, 2, FE_DOWNWARD), FE_UPWARD), FE_UPWARD);
+	double rtDown = sqrt(sub(-2, mul(logUp, 2, FE_UPWARD), FE_DOWNWARD), FE_DOWNWARD);
+	double numer = add(sub(CM13_DOWN, rtUp, FE_DOWNWARD), mul(logDown, C23_UP, FE_DOWNWARD), FE_DOWNWARD);
+	double denom = add(sub(C23_UP, rtDown, FE_UPWARD), mul(logUp, C23_DOWN, FE_UPWARD), FE_UPWARD);
+
+	double d = div(numer, denom, FE_UPWARD);
+
+	double del;
+	if (x > -0.00000226031551912)
+	{
+		auto [expDown, expUp] = ExpUpDown(w + N);
+		double delDown = mul(div(w, mul(x, EN_UP, FE_DOWNWARD), FE_DOWNWARD), expDown, FE_DOWNWARD);
+		double delUp = mul(div(w, mul(x, EN_DOWN, FE_UPWARD), FE_UPWARD), expUp, FE_UPWARD);
+		del = std::max(abs(delDown - 1), abs(delUp - 1));
+	}
+	else
+	{
+		mpfr_set_d(m, w, MPFR_RNDN);
+		mpfr_exp(yLowP1, m, MPFR_RNDN);
+		mpfr_mul_d(yLowP1, yLowP1, w, MPFR_RNDN);
+		mpfr_sub_d(yLowP1, yLowP1, x, MPFR_RNDN);
+		mpfr_div_d(yLowP1, yLowP1, x, MPFR_RNDN);
+		mpfr_abs(yLowP1, yLowP1, MPFR_RNDN);
+		del = mpfr_get_d(yLowP1, MPFR_RNDU);
+	}
+
+	double err = mul(d, del, FE_UPWARD);
+
+	double low = sub(w, err, FE_DOWNWARD);
+	double high = add(w, err, FE_UPWARD);
+	high = std::min(high, -1.0);
+
+	return { low, high };
+}
 
 Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 {
