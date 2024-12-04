@@ -10,14 +10,14 @@ add_library(ReferenceLambertW "Interval.h" "ReferenceW.cpp"  "ReferenceW.h"  "ha
 # === Libraries ===
 find_package(PkgConfig)
 pkg_check_modules(mpfr REQUIRED IMPORTED_TARGET mpfr)
-target_link_libraries(ReferenceLambertW PRIVATE PkgConfig::mpfr)
+target_link_libraries(ReferenceLambertW PUBLIC PkgConfig::mpfr)
 
 find_package(sleef REQUIRED)
 target_link_libraries(ReferenceLambertW PUBLIC sleef::sleef)
 target_include_directories(ReferenceLambertW PRIVATE ${SLEEF_INCLUDE_DIR})
 
 find_package(flint REQUIRED)
-target_link_libraries(ReferenceLambertW PRIVATE flint::flint)
+target_link_libraries(ReferenceLambertW PUBLIC flint::flint)
 
 # === Feature Enables ===
 if (REFERENCEW_MSVC_STATIC_RUNTIME)
@@ -38,6 +38,10 @@ install(TARGETS ${PROJECT_NAME}
 # Export includes
 install(DIRECTORY "../include"
         DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY "../src"
+        DESTINATION ${CMAKE_INSTALL_PREFIX}
+        FILES_MATCHING
+        PATTERN "*.h")
 
 # Configure the main config.cmake file
 configure_package_config_file(
