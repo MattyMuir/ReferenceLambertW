@@ -2,6 +2,7 @@
 
 # == Includes ==
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 # === Create Library ===
 add_library(ReferenceLambertW "Interval.h" "ReferenceW.cpp"  "ReferenceW.h"  "halley.h" "ReferenceWf.h" "ReferenceWf.cpp" "rndutil.h" "rndutil.cpp" "Sign.h" )
@@ -16,38 +17,44 @@ target_link_libraries(ReferenceLambertW PUBLIC sleef::sleef)
 target_include_directories(ReferenceLambertW PRIVATE ${SLEEF_INCLUDE_DIR})
 
 find_package(flint REQUIRED)
-target_link_libraries(ReferenceLambertW PRIVATE "${flint_DIR}/../../flint.lib")
-target_include_directories(ReferenceLambertW PRIVATE "${flint_DIR}/../../../include")
+target_link_libraries(ReferenceLambertW PRIVATE flint::flint)
 
 # === Feature Enables ===
 if (REFERENCEW_MSVC_STATIC_RUNTIME)
     set_property(TARGET ReferenceLambertW PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
-set_property(TARGET ReferenceLambertW PROPERTY CXX_STANDARD 20)
+target_compile_features(ReferenceLambertW PUBLIC cxx_std_20)
+enable_ipo(ReferenceLambertW)
+set_arch(ReferenceLambertW)
 
 # === Install ===
-# paths for binaries and headers
+# Install binaries and headers
 install(TARGETS ${PROJECT_NAME}
-    EXPORT "${PROJECT_NAME}Config"
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # lib
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # lib
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} # bin
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # include
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} # include/SomeLibrary
+    EXPORT ${PROJECT_NAME}Config
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # static library files
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # includes
 )
-
-message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
 
 # Export includes
 install(DIRECTORY "../include"
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(DIRECTORY "../src"
-        DESTINATION ${CMAKE_INSTALL_PREFIX}
-        FILES_MATCHING
-        PATTERN "*.h")
+        DESTINATION ${CMAKE_INSTALL_PREFIX})
 
-# CMake config name, namespace and path
-install(EXPORT "${PROJECT_NAME}Config"
-        FILE "${PROJECT_NAME}Config.cmake"
-        NAMESPACE ReferenceLambertW::
-        DESTINATION cmake)
+# Configure the main config.cmake file
+configure_package_config_file(
+    ${CMAKE_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+
+# Install the export set and configuration files
+install(EXPORT ${PROJECT_NAME}Config
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)

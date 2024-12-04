@@ -13,7 +13,7 @@
 #define SLEEF_STATIC_LIBS
 #include <sleef.h>
 
-#include <flint/arb.h>
+#include <arb.h>
 
 #include "rndutil.h"
 #include "halley.h"

@@ -1,7 +1,7 @@
 #pragma once
 #include <utility>
 
-#include <flint/arb.h>
+#include <arb.h>
 
 #include "Interval.h"
 #include "Sign.h"

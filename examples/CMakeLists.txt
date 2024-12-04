@@ -16,16 +16,17 @@ target_include_directories(example PUBLIC "../include/")
 target_include_directories(ratapprox PUBLIC "../include/")
 
 find_package(flint REQUIRED)
-target_link_libraries(example PRIVATE "${flint_DIR}/../../flint.lib")
-target_link_libraries(ratapprox PRIVATE "${flint_DIR}/../../flint.lib")
-target_include_directories(example PRIVATE "${flint_DIR}/../../../include")
-target_include_directories(ratapprox PRIVATE "${flint_DIR}/../../../include")
+target_link_libraries(example PRIVATE flint::flint)
+target_link_libraries(ratapprox PRIVATE flint::flint)
 
 # === Feature Enables ===
 if (REFERENCEW_MSVC_STATIC_RUNTIME)
     set_property(TARGET example PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET ratapprox PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
-
 target_compile_features(example PUBLIC cxx_std_20)
 target_compile_features(ratapprox PUBLIC cxx_std_20)
+enable_ipo(example)
+enable_ipo(ratapprox)
+set_arch(example)
+set_arch(ratapprox)
