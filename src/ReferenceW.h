@@ -1,7 +1,7 @@
 #pragma once
 #include <utility>
 
-#include <mpfr.h>
+#include <flint/arb.h>
 
 #include "Interval.h"
 #include "Sign.h"
@@ -22,7 +22,7 @@ public:
 #endif
 
 private:
-	mpfr_t m, yLowP0, yHighP0, yLowP1, yHighP1;
+	arb_t xArb, mArb, yArb;
 
 #if REFERENCEW_STATS
 	size_t numEvals = 0, numHighPrec = 0, maxBisections = 0, totalBisections = 0;

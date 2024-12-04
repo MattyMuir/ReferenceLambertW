@@ -15,6 +15,10 @@ find_package(sleef REQUIRED)
 target_link_libraries(ReferenceLambertW PUBLIC sleef::sleef)
 target_include_directories(ReferenceLambertW PRIVATE ${SLEEF_INCLUDE_DIR})
 
+find_package(flint REQUIRED)
+target_link_libraries(ReferenceLambertW PRIVATE "${flint_DIR}/../../flint.lib")
+target_include_directories(ReferenceLambertW PRIVATE "${flint_DIR}/../../../include")
+
 # === Feature Enables ===
 if (REFERENCEW_MSVC_STATIC_RUNTIME)
     set_property(TARGET ReferenceLambertW PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

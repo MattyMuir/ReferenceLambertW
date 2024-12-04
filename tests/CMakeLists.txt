@@ -11,6 +11,10 @@ target_link_libraries(tests PRIVATE PkgConfig::mpfr)
 target_link_libraries(tests PUBLIC ReferenceLambertW)
 target_include_directories(tests PUBLIC "../include/")
 
+find_package(flint REQUIRED)
+target_link_libraries(tests PRIVATE "${flint_DIR}/../../flint.lib")
+target_include_directories(tests PRIVATE "${flint_DIR}/../../../include")
+
 # === Feature Enables ===
 if (REFERENCEW_MSVC_STATIC_RUNTIME)
     set_property(TARGET tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

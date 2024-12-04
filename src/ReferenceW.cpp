@@ -13,6 +13,8 @@
 #define SLEEF_STATIC_LIBS
 #include <sleef.h>
 
+#include <flint/arb.h>
+
 #include "rndutil.h"
 #include "halley.h"
 
@@ -22,20 +24,16 @@ static constexpr double E2_UP = 5.436563656918091; // e*2 rounded towards +Inf
 
 ReferenceW::ReferenceW()
 {
-	mpfr_init2(m, 53);
-	mpfr_init2(yLowP0, 53);
-	mpfr_init2(yHighP0, 53);
-	mpfr_init2(yLowP1, 150);
-	mpfr_init2(yHighP1, 150);
+	arb_init(xArb);
+	arb_init(mArb);
+	arb_init(yArb);
 }
 
 ReferenceW::~ReferenceW()
 {
-	mpfr_clear(m);
-	mpfr_clear(yLowP0);
-	mpfr_clear(yHighP0);
-	mpfr_clear(yLowP1);
-	mpfr_clear(yHighP1);
+	arb_clear(xArb);
+	arb_clear(mArb);
+	arb_clear(yArb);
 }
 
 Interval ReferenceW::W0(double x)
@@ -268,18 +266,16 @@ std::pair<double, double> ReferenceW::Wm1Bracket(double x)
 	else
 		w = NearBranchWm1(x);
 
-	// Error bound
-	auto [logDown, logUp] = LogUpDown(-x);
-
-	double rtUp = sqrt(sub(-2, mul(logDown, 2, FE_DOWNWARD), FE_UPWARD), FE_UPWARD);
+	// Derivative Bound
+	fesetround(FE_TONEAREST);
+	double logUp = std::nextafter(Sleef_log_u10(-x), INFINITY);
 	double rtDown = sqrt(sub(-2, mul(logUp, 2, FE_UPWARD), FE_DOWNWARD), FE_DOWNWARD);
-	double numer = add(sub(CM13_DOWN, rtUp, FE_DOWNWARD), mul(logDown, C23_UP, FE_DOWNWARD), FE_DOWNWARD);
 	double denom = add(sub(C23_UP, rtDown, FE_UPWARD), mul(logUp, C23_DOWN, FE_UPWARD), FE_UPWARD);
+	double d = sub(1, div(1.0, denom, FE_DOWNWARD), FE_UPWARD);
 
-	double d = div(numer, denom, FE_UPWARD);
-
+	// Del Bound
 	double del;
-	if (x > -0.00000226031551912)
+	if (x > -0.00000137095397731)
 	{
 		auto [expDown, expUp] = ExpUpDown(w + N);
 		double delDown = mul(div(w, mul(x, EN_UP, FE_DOWNWARD), FE_DOWNWARD), expDown, FE_DOWNWARD);
@@ -288,17 +284,22 @@ std::pair<double, double> ReferenceW::Wm1Bracket(double x)
 	}
 	else
 	{
-		mpfr_set_d(m, w, MPFR_RNDN);
-		mpfr_exp(yLowP1, m, MPFR_RNDN);
-		mpfr_mul_d(yLowP1, yLowP1, w, MPFR_RNDN);
-		mpfr_sub_d(yLowP1, yLowP1, x, MPFR_RNDN);
-		mpfr_div_d(yLowP1, yLowP1, x, MPFR_RNDN);
-		mpfr_abs(yLowP1, yLowP1, MPFR_RNDN);
-		del = mpfr_get_d(yLowP1, MPFR_RNDU);
+		arb_set_d(mArb, w);
+		arb_set_d(xArb, x);
+		arb_exp(yArb, mArb, 100);
+		arb_mul(yArb, yArb, mArb, 100);
+		arb_sub(yArb, yArb, xArb, 100);
+		arb_div(yArb, yArb, xArb, 100);
+		arb_abs(yArb, yArb);
+		arf_t delArf;
+		arf_init(delArf);
+		arb_get_ubound_arf(delArf, yArb, 100);
+		del = arf_get_d(delArf, ARF_RND_UP);
+		arf_clear(delArf);
 	}
 
+	// Compute final error
 	double err = mul(d, del, FE_UPWARD);
-
 	double low = sub(w, err, FE_DOWNWARD);
 	double high = add(w, err, FE_UPWARD);
 	high = std::min(high, -1.0);
@@ -313,6 +314,7 @@ Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 		numHighPrec++;
 #endif
 
+#if 0
 	mpfr_set_d(m, midpoint, MPFR_RNDN);
 
 	mpfr_t& yLow = useHighPrec ? yLowP1 : yLowP0;
@@ -340,6 +342,25 @@ Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 		return Sign::Negative;
 
 	return Sign::Inconclusive;
+#else
+	slong prec = useHighPrec ? 150 : 90;
+
+	arb_set_d(xArb, x);
+	arb_set_d(mArb, midpoint);
+	arb_exp(yArb, mArb, prec);
+	arb_mul(yArb, yArb, mArb, prec);
+	arb_sub(yArb, yArb, xArb, prec);
+
+	bool isPos = arb_is_nonnegative(yArb);
+	bool isNeg = arb_is_nonpositive(yArb);
+
+	if (isPos)
+		return Sign::Positive;
+	if (isNeg)
+		return Sign::Negative;
+
+	return Sign::Inconclusive;
+#endif
 }
 
 Interval ReferenceW::Bisection(double x, double low, double high, bool increasing)

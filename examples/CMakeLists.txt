@@ -15,6 +15,12 @@ target_link_libraries(ratapprox PUBLIC ReferenceLambertW)
 target_include_directories(example PUBLIC "../include/")
 target_include_directories(ratapprox PUBLIC "../include/")
 
+find_package(flint REQUIRED)
+target_link_libraries(example PRIVATE "${flint_DIR}/../../flint.lib")
+target_link_libraries(ratapprox PRIVATE "${flint_DIR}/../../flint.lib")
+target_include_directories(example PRIVATE "${flint_DIR}/../../../include")
+target_include_directories(ratapprox PRIVATE "${flint_DIR}/../../../include")
+
 # === Feature Enables ===
 if (REFERENCEW_MSVC_STATIC_RUNTIME)
     set_property(TARGET example PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
