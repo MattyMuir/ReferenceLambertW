@@ -142,20 +142,20 @@ int RunTest(int64_t branch)
 
 	// ReciprocalDist test
 	{
-		static Ty low = GetEmUp<Ty>();
-		static Ty high = (branch == 0) ? INFINITY : 0;
+		Ty low = GetEmUp<Ty>();
+		Ty high = (branch == 0) ? INFINITY : 0;
 
-		static ReciprocalDistributionEx<Ty> dist{ low, high, false };
-		if (RunTest<Ty>(branch, []() { return dist(gen); }))
+		ReciprocalDistributionEx<Ty> dist{ low, high, false };
+		if (RunTest<Ty>(branch, [&]() { return dist(gen); }))
 			return 1;
 	}
 
 	// Near branch test
 	{
-		static Ty low = std::is_same_v<Ty, float> ? -15 : -35;
-		static Ty high = -1;
+		Ty low = std::is_same_v<Ty, float> ? -15 : -35;
+		Ty high = -1;
 
-		static std::uniform_real_distribution<Ty> dist{ low, high };
+		std::uniform_real_distribution<Ty> dist{ low, high };
 		if (RunTest<Ty>(branch, [&]() { return GetEmUp<Ty>() + exp(dist(gen)); }))
 			return 1;
 	}

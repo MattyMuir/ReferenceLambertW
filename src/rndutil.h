@@ -9,6 +9,7 @@ float sub(float x, float y, int rnd);
 float mul(float x, float y, int rnd);
 float div(float x, float y, int rnd);
 float sqrt(float x, int rnd);
+float fma(float x, float y, float z, int rnd);
 
 std::pair<float, float> ExpUpDown(float x);
 std::pair<float, float> LogUpDown(float x);
@@ -19,6 +20,7 @@ double sub(double x, double y, int rnd);
 double mul(double x, double y, int rnd);
 double div(double x, double y, int rnd);
 double sqrt(double x, int rnd);
+float fma(double x, double y, double z, int rnd);
 
 std::pair<double, double> ExpUpDown(double x);
 std::pair<double, double> LogUpDown(double x);

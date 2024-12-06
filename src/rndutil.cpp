@@ -39,6 +39,12 @@ float sqrt(float x, int rnd)
 	return sqrtf(x);
 }
 
+float fma(float x, float y, float z, int rnd)
+{
+	fesetround(rnd);
+	return fmaf(x, y, z);
+}
+
 std::pair<float, float> ExpUpDown(float x)
 {
 	fesetround(FE_TONEAREST);
@@ -81,6 +87,12 @@ double sqrt(double x, int rnd)
 {
 	fesetround(rnd);
 	return sqrt(x);
+}
+
+float fma(double x, double y, double z, int rnd)
+{
+	fesetround(rnd);
+	return fma(x, y, z);
 }
 
 std::pair<double, double> ExpUpDown(double x)

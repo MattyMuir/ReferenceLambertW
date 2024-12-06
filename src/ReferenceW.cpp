@@ -52,84 +52,7 @@ Interval ReferenceW::W0(double x)
 	int initialRnd = fegetround();
 
 	// === Compute Bracket ===
-	double high;
-	if (x > 3.0)
-	{
-		// high = ln(x)
-		high = Sleef_log_u10(x);
-		high = std::nextafter(high, INFINITY);
-	}
-	else if (x > -0.2875)
-	{
-		// high = ln(1 + x)
-		high = Sleef_log1p_u10(x);
-		high = std::nextafter(high, INFINITY);
-	}
-	else
-	{
-		// high = -1 + sqrt(2ex + 2)
-		high = mul(x, E2_DOWN, FE_UPWARD);
-		high = add(high, 2, FE_UPWARD);
-		high = sqrt(high, FE_UPWARD);
-		high = sub(high, 1, FE_UPWARD);
-	}
-
-	double low;
-	if (x > 3)
-	{
-		// low = ln(x) - ln(ln(x))
-		auto [logDown, logUp] = LogUpDown(x);
-		logUp = std::nextafter(Sleef_log_u10(logUp), INFINITY);
-
-		low = sub(logDown, logUp, FE_DOWNWARD);
-	}
-	else if (x >= 0)
-	{
-		// low = x / (x + 1)
-		double xp1 = add(x, 1, FE_UPWARD);
-		low = div(x, xp1, FE_DOWNWARD);
-	}
-	else if (x > -0.3019)
-	{
-		// low = x * (1 - x * 2.4)
-		double xt = mul(x, 2.4, FE_DOWNWARD);
-		low = sub(1, xt, FE_UPWARD);
-		low = mul(low, x, FE_DOWNWARD);
-	}
-	else
-	{
-		// low = -1 + sqrt(2ex + 2) - 1/3 * (2ex + 2)
-		double reta = mul(x, E2_UP, FE_DOWNWARD);
-		reta = add(reta, 2, FE_DOWNWARD);
-		reta = sqrt(reta, FE_DOWNWARD);
-
-		double eta = mul(x, E2_DOWN, FE_UPWARD);
-		eta = add(eta, 2, FE_UPWARD);
-		eta = div(eta, 3, FE_UPWARD);
-
-		low = sub(reta, eta, FE_DOWNWARD);
-		low = add(low, -1, FE_DOWNWARD);
-
-		// Clamp low above -1
-		if (low < -1) low = -1;
-	}
-
-	// === Halley Iterations ===
-	while (low != 0)
-	{
-		double newLow = HalleyW0(x, low, false);
-		bool stop = (abs((newLow - low) / low) < 1e-7);
-		low = newLow;
-		if (stop) break;
-	}
-
-	while (high != 0)
-	{
-		double newHigh = HalleyW0(x, high, true);
-		bool stop = (abs((newHigh - high) / high) < 1e-7);
-		high = newHigh;
-		if (stop) break;
-	}
+	auto [low, high] = W0Bracket(x);
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, true);
@@ -192,6 +115,195 @@ static inline double AddEm(double x)
 	return (x + emHigh) + emLow;
 }
 
+static inline double NearBranchW0(double x)
+{
+	static constexpr double s2e = 2.331643981597124;
+	static constexpr double P[] = {
+		-1.00000000000000000000,
+		0.99999999999998689937,
+		-0.33333333333171155655,
+		0.15277777769847986078,
+		-0.07962962759798784818,
+		0.04450228328389740917,
+		-0.02598439214142129680,
+		0.01563333375832150554,
+		-0.00960508856297833703,
+		0.00596982547465134492,
+		-0.00368441824865070513,
+		0.00216878673408957843,
+		-0.00113330227139719539,
+		0.00047252681627728467,
+		-0.00013420111092875102,
+		0.00001887878365359131,
+	};
+
+	double p = sqrt(AddEm(x)) * s2e;
+
+	double value = P[15];
+	for (size_t i = 0; i < 15; i++)
+		value = value * p + P[14 - i];
+
+	return value;
+}
+
+static inline double FirstW0Approx(double x)
+{
+	if (abs(x) < 1e-4)
+		return x;
+
+	static constexpr double P[] = {
+		0,
+		30.580056454638136,
+		83.95836185597197,
+		46.16620637664877,
+		3.4636816277252214
+	};
+
+	static constexpr double Q[] = {
+		30.578403642151667,
+		114.49011569793561,
+		114.80618615998705,
+		28.635096582884064,
+		1
+	};
+
+	double numer = P[4];
+	for (size_t i = 0; i < 4; i++)
+		numer = numer * x + P[3 - i];
+
+	double denom = Q[4];
+	for (size_t i = 0; i < 4; i++)
+		denom = denom * x + Q[3 - i];
+
+	return numer / denom;
+}
+
+double SecondW0Approx(double x)
+{
+	static constexpr double P[] = {
+		64312.7454007891,
+		43264.12227598657,
+		20243.65384336377,
+		453.17656235798086,
+		1.0000432316050645
+	};
+	static constexpr double Q[] = {
+		104342.57917932322,
+		22499.368605590193,
+		460.93750724715477,
+		1
+	};
+
+	double lx = log(x);
+
+	double numer = P[4];
+	for (size_t i = 0; i < 4; i++)
+		numer = numer * lx + P[3 - i];
+
+	double denom = Q[3];
+	for (size_t i = 0; i < 3; i++)
+		denom = denom * lx + Q[2 - i];
+
+	return numer / denom;
+}
+
+std::pair<double, double> ReferenceW::W0Bracket(double x)
+{
+	// Initial approximation
+	double w;
+	fesetround(FE_TONEAREST);
+	if (x < -0.28)
+		w = NearBranchW0(x);
+	else
+	{
+		w = (x < 7.34) ? FirstW0Approx(x) : SecondW0Approx(x);
+
+		// Fritsch Iteration
+		double zn = log(x / w) - w;
+		double temp = 1.0 + w;
+		double temp2 = temp + (2.0 / 3.0) * zn;
+		temp2 = 2.0 * temp * temp2;
+		w = w * (1.0 + (zn / temp) * (temp2 - zn) / (temp2 - 2.0 * zn));
+	}
+
+	// Derivative Bound
+	double d = x;
+	if (x > 0)
+	{
+		if (x > 0.01)
+		{
+			double logUp = Sleef_log1p_u10(x);
+			logUp = std::nextafter(logUp, INFINITY);
+			d = sub(1, div(1, add(1, logUp, FE_UPWARD), FE_DOWNWARD), FE_UPWARD);
+		}
+	}
+	else if (x < 0)
+	{
+		if (x < -0.01)
+		{
+			static constexpr double a = -0.1321205588285577; // (2 - e) / 2e rounded towards -Inf
+			static constexpr double b = 0.8939534673502061; // sqrt(2)(e - 1) / e rounded towards -Inf
+			static constexpr double E2_DOWN = 5.43656365691809;
+			static constexpr double E2_UP = 5.436563656918091;
+
+			double etaUp = fma(E2_DOWN, x, 2, FE_UPWARD);
+			double etaDown = fma(E2_UP, x, 2, FE_DOWNWARD);
+			etaDown = mul(b, sqrt(etaDown, FE_DOWNWARD), FE_DOWNWARD);
+			double denom = fma(a, etaUp, etaDown, FE_DOWNWARD);
+			d = sub(div(1, denom, FE_UPWARD), 1, FE_UPWARD);
+		}
+		else
+			d = sub(mul(mul(x, x, FE_UPWARD), 3, FE_UPWARD), x, FE_UPWARD);
+	}
+
+	// Del Bound
+	double del;
+	if (x > 4.11380962917)
+	{
+		static constexpr double N = 50;
+		static constexpr double EN_DOWN = 5.184705528587072e+21;
+		static constexpr double EN_UP = 5.184705528587073e+21;
+
+		if (x > 1)
+		{
+			auto [expDown, expUp] = ExpUpDown(w);
+			double delDown = mul(div(w, x, FE_DOWNWARD), expDown, FE_DOWNWARD);
+			double delUp = mul(div(w, x, FE_UPWARD), expUp, FE_UPWARD);
+			del = std::max(abs(delDown - 1), abs(delUp - 1));
+		}
+		else
+		{
+			auto [expDown, expUp] = ExpUpDown(w + N);
+			double delDown = mul(div(w, mul(x, EN_UP, FE_DOWNWARD), FE_DOWNWARD), expDown, FE_DOWNWARD);
+			double delUp = mul(div(w, mul(x, EN_DOWN, FE_UPWARD), FE_UPWARD), expUp, FE_UPWARD);
+			del = std::max(abs(delDown - 1), abs(delUp - 1));
+		}
+	}
+	else
+	{
+		arb_set_d(mArb, w);
+		arb_set_d(xArb, x);
+		arb_exp(yArb, mArb, 100);
+		arb_mul(yArb, yArb, mArb, 100);
+		arb_sub(yArb, yArb, xArb, 100);
+		arb_div(yArb, yArb, xArb, 100);
+		arb_abs(yArb, yArb);
+		arf_t delArf;
+		arf_init(delArf);
+		arb_get_ubound_arf(delArf, yArb, 100);
+		del = arf_get_d(delArf, ARF_RND_UP);
+		arf_clear(delArf);
+	}
+
+	// Compute final error
+	double err = mul(d, del, FE_UPWARD);
+	double low = sub(w, err, FE_DOWNWARD);
+	double high = add(w, err, FE_UPWARD);
+	high = std::max(high, -1.0);
+
+	return { low, high };
+}
+
 static inline double NearBranchWm1(double x)
 {
 	// === Constants ===
@@ -243,7 +355,10 @@ std::pair<double, double> ReferenceW::Wm1Bracket(double x)
 	// =================
 
 	double w;
-	if (x > -0.318092372804)
+	fesetround(FE_TONEAREST);
+	if (x < -0.318092372804)
+		w = NearBranchWm1(x);
+	else
 	{
 		// Initial approximation
 		double t = sqrt(-2 - 2 * log(-x));
@@ -263,11 +378,8 @@ std::pair<double, double> ReferenceW::Wm1Bracket(double x)
 		temp2 = 2.0 * temp * temp2;
 		w = w * (1.0 + (zn / temp) * (temp2 - zn) / (temp2 - 2.0 * zn));
 	}
-	else
-		w = NearBranchWm1(x);
 
 	// Derivative Bound
-	fesetround(FE_TONEAREST);
 	double logUp = std::nextafter(Sleef_log_u10(-x), INFINITY);
 	double rtDown = sqrt(sub(-2, mul(logUp, 2, FE_UPWARD), FE_DOWNWARD), FE_DOWNWARD);
 	double denom = add(sub(C23_UP, rtDown, FE_UPWARD), mul(logUp, C23_DOWN, FE_UPWARD), FE_UPWARD);
