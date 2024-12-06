@@ -7,7 +7,7 @@
 #include <cfenv>
 
 #include <iostream>
-#include <iomanip>
+#include <format>
 #include <numeric>
 
 #define SLEEF_STATIC_LIBS
@@ -239,8 +239,7 @@ Intervalf ReferenceWf::Bisection(float x, float low, float high, bool increasing
 
 		if (sign == Sign::Inconclusive)
 		{
-			std::cerr << std::setprecision(20);
-			std::cerr << "Error, ambiguous sign: " << x << '\n';
+			std::cerr << std::format("Error, ambiguous sign: {}\n", x);
 			throw;
 		}
 

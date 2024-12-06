@@ -126,7 +126,7 @@ int RunTest(int64_t branch, std::function<Ty()> rand)
 
 			if (WexpwIsPositive(res.inf, x) == WexpwIsPositive(res.sup, x))
 			{
-				std::cerr << std::format("x: {}\n", x);
+				std::cerr << std::format("Incorrect x: {}\n", x);
 				return 1;
 			}
 		}
@@ -165,7 +165,6 @@ int RunTest(int64_t branch)
 
 int main(int argc, char** argv)
 {
-#if 0
 	// Check number of arguments is correct
 	if (argc != 2)
 		ERROR("Test must have exactly one extra argument");
@@ -178,9 +177,6 @@ int main(int argc, char** argv)
 	auto convRes = std::from_chars(arg.data(), arg.data() + arg.size(), testIdx);
 	if (convRes.ec != std::errc())
 		ERROR("Test index could not be parsed");
-#else
-	size_t testIdx = 0;
-#endif
 
 	switch (testIdx)
 	{

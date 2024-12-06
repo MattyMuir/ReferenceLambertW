@@ -9,7 +9,7 @@
 #include "Timer.h"
 
 // === Bench Config ===
-#define BRANCH W0
+#define BRANCH Wm1
 using BenchTy = double;
 // ====================
 

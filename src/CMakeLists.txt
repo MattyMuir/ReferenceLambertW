@@ -26,6 +26,7 @@ endif()
 target_compile_features(ReferenceLambertW PUBLIC cxx_std_20)
 enable_ipo(ReferenceLambertW)
 set_arch(ReferenceLambertW)
+enable_strict_math(ReferenceLambertW)
 
 # === Install ===
 # Install binaries and headers

@@ -7,7 +7,7 @@
 #include <cfenv>
 
 #include <iostream>
-#include <iomanip>
+#include <format>
 #include <numeric>
 
 #define SLEEF_STATIC_LIBS
@@ -379,6 +379,7 @@ std::pair<double, double> ReferenceW::Wm1Bracket(double x)
 		w = w * (1.0 + (zn / temp) * (temp2 - zn) / (temp2 - 2.0 * zn));
 	}
 
+
 	// Derivative Bound
 	double logUp = std::nextafter(Sleef_log_u10(-x), INFINITY);
 	double rtDown = sqrt(sub(-2, mul(logUp, 2, FE_UPWARD), FE_DOWNWARD), FE_DOWNWARD);
@@ -389,10 +390,16 @@ std::pair<double, double> ReferenceW::Wm1Bracket(double x)
 	double del;
 	if (x > -0.00000137095397731)
 	{
-		auto [expDown, expUp] = ExpUpDown(w + N);
+		double expDown = add(w, N, FE_DOWNWARD);
+		double expUp = add(w, N, FE_UPWARD);
+		fesetround(FE_TONEAREST);
+		expDown = std::nextafter(Sleef_exp_u10(expDown), -INFINITY);
+		expUp = std::nextafter(Sleef_exp_u10(expUp), INFINITY);
 		double delDown = mul(div(w, mul(x, EN_UP, FE_DOWNWARD), FE_DOWNWARD), expDown, FE_DOWNWARD);
+		delDown = sub(delDown, 1, FE_DOWNWARD);
 		double delUp = mul(div(w, mul(x, EN_DOWN, FE_UPWARD), FE_UPWARD), expUp, FE_UPWARD);
-		del = std::max(abs(delDown - 1), abs(delUp - 1));
+		delUp = sub(delUp, 1, FE_UPWARD);
+		del = std::max(abs(delDown), abs(delUp));
 	}
 	else
 	{
@@ -455,6 +462,9 @@ Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 
 	return Sign::Inconclusive;
 #else
+
+	if (midpoint >= x)
+		return Sign::Positive;
 	slong prec = useHighPrec ? 150 : 90;
 
 	arb_set_d(xArb, x);
@@ -500,8 +510,7 @@ Interval ReferenceW::Bisection(double x, double low, double high, bool increasin
 
 		if (sign == Sign::Inconclusive)
 		{
-			std::cerr << std::setprecision(20);
-			std::cerr << "Error, ambiguous sign: " << x << '\n';
+			std::cerr << std::format("Error, ambiguous sign: {}\n", x);
 			throw;
 		}
 
