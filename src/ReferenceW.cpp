@@ -47,6 +47,8 @@ Interval ReferenceW::W0(double x)
 		return { NAN, NAN };
 	if (x == INFINITY)
 		return { DBL_MAX, INFINITY };
+	if (x == 0)
+		return { 0, 0 };
 
 	// Save current rounding mode
 	int initialRnd = fegetround();

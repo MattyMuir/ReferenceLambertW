@@ -83,8 +83,7 @@ int RunTest(int64_t branch, std::function<Ty()> rand)
 	// ==================
 
 	// Construct evaluators
-	ReferenceW evaluatord;
-	ReferenceWf evaluatorf;
+	std::conditional_t<std::is_same_v<Ty, float>, ReferenceWf, ReferenceW> evaluator;
 
 	for (size_t i = 0; i < Num; i++)
 	{
@@ -94,9 +93,9 @@ int RunTest(int64_t branch, std::function<Ty()> rand)
 		{
 			Intervalf res;
 			if (branch == 0)
-				res = evaluatorf.W0(x);
+				res = evaluator.W0(x);
 			else
-				res = evaluatorf.Wm1(x);
+				res = evaluator.Wm1(x);
 
 			if (res.inf != res.sup && res.sup != std::nextafter(res.inf, INFINITY))
 			{
@@ -114,9 +113,9 @@ int RunTest(int64_t branch, std::function<Ty()> rand)
 		{
 			Interval res;
 			if (branch == 0)
-				res = evaluatord.W0(x);
+				res = evaluator.W0(x);
 			else
-				res = evaluatord.Wm1(x);
+				res = evaluator.Wm1(x);
 
 			if (res.inf != res.sup && res.sup != std::nextafter(res.inf, INFINITY))
 			{
@@ -158,6 +157,18 @@ int RunTest(int64_t branch)
 		std::uniform_real_distribution<Ty> dist{ low, high };
 		if (RunTest<Ty>(branch, [&]() { return GetEmUp<Ty>() + exp(dist(gen)); }))
 			return 1;
+	}
+
+	// Zero test
+	if (branch == 0)
+	{
+		std::conditional_t<std::is_same_v<Ty, float>, ReferenceWf, ReferenceW> evaluator;
+		auto [inf, sup] = evaluator.W0(0);
+		if (inf != 0 || sup != 0)
+		{
+			std::cerr << "Failed zero test!\n";
+			return 1;
+		}
 	}
 
 	return 0;
