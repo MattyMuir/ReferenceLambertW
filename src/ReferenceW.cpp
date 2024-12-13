@@ -275,7 +275,11 @@ std::pair<double, double> ReferenceW::W0Bracket(double x)
 		}
 		else
 		{
-			auto [expDown, expUp] = ExpUpDown(w + N);
+			double expDown = add(w, N, FE_DOWNWARD);
+			double expUp = add(w, N, FE_UPWARD);
+			fesetround(FE_TONEAREST);
+			expDown = std::nextafter(Sleef_exp_u10(expDown), -INFINITY);
+			expUp = std::nextafter(Sleef_exp_u10(expUp), INFINITY);
 			double delDown = mul(div(w, mul(x, EN_UP, FE_DOWNWARD), FE_DOWNWARD), expDown, FE_DOWNWARD);
 			double delUp = mul(div(w, mul(x, EN_DOWN, FE_UPWARD), FE_UPWARD), expUp, FE_UPWARD);
 			del = std::max(abs(delDown - 1), abs(delUp - 1));
@@ -435,36 +439,6 @@ Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 		numHighPrec++;
 #endif
 
-#if 0
-	mpfr_set_d(m, midpoint, MPFR_RNDN);
-
-	mpfr_t& yLow = useHighPrec ? yLowP1 : yLowP0;
-	mpfr_t& yHigh = useHighPrec ? yHighP1 : yHighP0;
-
-	// Compute exp
-	ExpUpDown(yLow, yHigh, m);
-	if (mpfr_cmp_ui(m, 0) < 0)
-		mpfr_swap(yLow, yHigh);
-
-	// Compute yLow
-	mpfr_mul(yLow, yLow, m, MPFR_RNDD);
-	mpfr_sub_d(yLow, yLow, x, MPFR_RNDD);
-
-	// Compute yHigh
-	mpfr_mul(yHigh, yHigh, m, MPFR_RNDU);
-	mpfr_sub_d(yHigh, yHigh, x, MPFR_RNDU);
-
-	int lowCmp = mpfr_cmp_ui(yLow, 0);
-	int highCmp = mpfr_cmp_ui(yHigh, 0);
-
-	if (lowCmp >= 0 && highCmp >= 0)
-		return Sign::Positive;
-	if (lowCmp <= 0 && highCmp <= 0)
-		return Sign::Negative;
-
-	return Sign::Inconclusive;
-#else
-
 	if (midpoint >= x)
 		return Sign::Positive;
 	slong prec = useHighPrec ? 150 : 90;
@@ -484,7 +458,6 @@ Sign ReferenceW::GetMidpointSign(double x, double midpoint, bool useHighPrec)
 		return Sign::Negative;
 
 	return Sign::Inconclusive;
-#endif
 }
 
 Interval ReferenceW::Bisection(double x, double low, double high, bool increasing)
@@ -493,17 +466,18 @@ Interval ReferenceW::Bisection(double x, double low, double high, bool increasin
 	size_t b = 0;
 #endif
 
+	fesetround(FE_TONEAREST);
 	for (;;)
 	{
 #if REFERENCEW_STATS
 		b++;
 #endif
 
+		if (high <= std::nextafter(low, INFINITY))
+			break; // Bracket cannot be narrowed any further
+
 		// m = (low + high) / 2
 		double m = std::midpoint(low, high);
-
-		if (m == low || m == high)
-			break; // Bracket cannot be narrowed any further
 
 		// Calculate midpoint sign
 		Sign sign = GetMidpointSign(x, m, false);

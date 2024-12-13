@@ -4,13 +4,20 @@
 #include <vector>
 #include <format>
 #include <random>
+#include <thread>
 
 #include <ReferenceLambertW.h>
 
-constexpr size_t pOrder = 8;
+// === Parameters ===
+constexpr size_t pOrder = 7;
 constexpr size_t qOrder = 7;
 constexpr size_t numCoeffs = pOrder + qOrder + 1;
-constexpr double yOffset = 0.567143290409783872999968662210;
+constexpr double yOffset = 0;
+
+constexpr double min = -0.3;
+constexpr double max = 7.38905609893;
+constexpr double step = 0.05;
+// ==================
 
 struct DerivState
 {
@@ -118,13 +125,13 @@ double Wm1(double x)
 double Func(double x)
 {
 	//return Wm1(-exp(-0.5 * (x * x + 2)));
-	return W0(exp(x));
+	//return W0(exp(x));
+	return W0(x);
 }
 
 float fFunc(float x)
 {
-	static ReferenceWf evaluator;
-	return evaluator.Wm1(-exp(-0.5f * (x * x + 2))).inf;
+	return Func(x);
 }
 
 uint32_t ULPDistance(float a, float b)
@@ -144,15 +151,14 @@ uint32_t ULPDistance(float a, float b)
 
 std::vector<float> FloatRefine(const std::vector<double>& xs_, const std::vector<double>& dCoeffs)
 {
-	// Round xs
-	std::vector<float> xs;
-	for (double x : xs_)
-		xs.push_back((float)x);
+	// === Parameters ===
+	static constexpr size_t NumSamples = 1'000'000;
+	static constexpr size_t NumIter = 1'000;
+	// ==================
 
-	// Calculate ys
-	std::vector<float> ys;
-	for (float x : xs)
-		ys.push_back((float)Func(x));
+	static std::mt19937_64 gen{ std::random_device{}() };
+	std::uniform_real_distribution<float> branch{ 0.0f, 1.0f };
+	std::uniform_real_distribution<float> dist{ (float)min, (float)max };
 
 	// Round coefficients
 	std::vector<float> bestCoeffs;
@@ -160,24 +166,21 @@ std::vector<float> FloatRefine(const std::vector<double>& xs_, const std::vector
 		bestCoeffs.push_back((float)c);
 
 	uint32_t bestError = 10'000;
-	static std::mt19937_64 gen{ std::random_device{}() };
-	static std::uniform_real_distribution<float> branch{ 0.0f, 1.0f };
-	static std::normal_distribution<float> dist{ 1, 1e-5 };
-	for (size_t i = 0; i < 1'000'000; i++)
+	for (size_t i = 0; i < NumIter; i++)
 	{
 		std::vector<float> newCoeffs{ bestCoeffs };
 		for (float& coeff : newCoeffs)
 		{
 			if (branch(gen) < 0.1f)
-				coeff = coeff * dist(gen);
+				coeff = std::nextafter(coeff, (gen() & 1) ? -INFINITY : INFINITY);
 		}
 
 		// Calculate max error
 		uint32_t maxError = 0;
-		for (size_t i = 0; i < xs.size(); i++)
+		for (size_t i = 0; i < NumSamples; i++)
 		{
-			float x = xs[i];
-			float y = ys[i];
+			float x = dist(gen);
+			float y = fFunc(x);
 
 			float approx = EvaluateRational(x, newCoeffs);
 			uint32_t err = ULPDistance(approx, y);
@@ -197,57 +200,63 @@ std::vector<float> FloatRefine(const std::vector<double>& xs_, const std::vector
 	return bestCoeffs;
 }
 
+volatile bool keepRunning = true;
+void StopThread()
+{
+	std::cin.get();
+	keepRunning = false;
+}
+
 int main()
 {
 	// Prepare data
 	std::vector<double> xs, ys;
-	for (double x = 0; x < 79.52; x += 0.05)
+	for (double x = min; x < max; x += step)
 	{
 		xs.push_back(x);
 		ys.push_back(Func(x));
 	}
 
 	// Initial parameters
-	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 	std::vector<double> scales{
 		0,
-		11087152.7748,
-		8486181.12685,
-		3416914.71516,
-		813083.430535,
-		115397.465193,
-		9766.42319992,
-		230.594326831,
-		0.998694488778,
-		30636450.9383,
-		17210757.1717,
-		6054509.95539,
-		1212699.80199,
-		155314.797354,
-		10977.9615602,
-		237.729006177
+		165.515615012,
+		1104.91533262,
+		2632.28394201,
+		2689.46435841,
+		1121.29227042,
+		153.337474222,
+		4.07732297707,
+		165.515615012,
+		1270.43104137,
+		3654.44214873,
+		4879.63187614,
+		3045.00582583,
+		794.87132517,
+		67.2285723193
 	};
 
 	if (ps.size() != scales.size() || ps.size() != numCoeffs)
 		throw;
 
+	// Start thread
+	std::thread stopThread{ StopThread };
+
 	// Gradient descent
-	for (size_t iter = 0;; iter++)
+	for (size_t iter = 0; keepRunning; iter++)
 	{
 		// Calculate error and derivatives
 		auto [initialError, derivs] = GetMaxError(xs, ys, ps, scales);
-
-		// Stop condition
-		if (log10(initialError) < -9)
-			break;
 
 		if (iter % 1000 == 0)
 			std::cout << std::format("Iter {} error: {}\n", iter, log10(initialError));
 
 		// Take steps
 		for (size_t pi = 0; pi < numCoeffs; pi++)
-			ps[pi] -= derivs[pi] * 1e-8;
+			ps[pi] -= derivs[pi] * 1e-12;
 	}
+	stopThread.join();
 
 	// Get coefficients
 	std::vector<double> coeffs = GetCoefficients(ps, scales);
@@ -278,4 +287,6 @@ int main()
 		std::cout << std::format("{}\n", fCoeffs[i]);
 	std::cout << "1\n";
 #endif
+
+	std::cin.get();
 }

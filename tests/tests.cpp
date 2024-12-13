@@ -76,6 +76,24 @@ bool WexpwIsPositive(Ty w, Ty x)
 }
 
 template <typename Ty>
+int TestPoint(Ty x, const std::conditional_t<std::is_same_v<Ty, float>, Intervalf, Interval>& res)
+{
+	if (res.inf != res.sup && res.sup != std::nextafter(res.inf, INFINITY))
+	{
+		std::cerr << std::format("Too wide x: {}\n", x);
+		return 1;
+	}
+
+	if (WexpwIsPositive(res.inf, x) == WexpwIsPositive(res.sup, x))
+	{
+		std::cerr << std::format("Incorrect x: {}\n", x);
+		return 1;
+	}
+
+	return 0;
+}
+
+template <typename Ty>
 int RunTest(int64_t branch, std::function<Ty()> rand)
 {
 	// === Parameters ===
@@ -97,17 +115,7 @@ int RunTest(int64_t branch, std::function<Ty()> rand)
 			else
 				res = evaluator.Wm1(x);
 
-			if (res.inf != res.sup && res.sup != std::nextafter(res.inf, INFINITY))
-			{
-				std::cerr << std::format("Too wide x: {}\n", x);
-				return 1;
-			}
-
-			if (WexpwIsPositive(res.inf, x) == WexpwIsPositive(res.sup, x))
-			{
-				std::cerr << std::format("Incorrect x: {}\n", x);
-				return 1;
-			}
+			if (TestPoint(x, res)) return 1;
 		}
 		else
 		{
@@ -117,17 +125,7 @@ int RunTest(int64_t branch, std::function<Ty()> rand)
 			else
 				res = evaluator.Wm1(x);
 
-			if (res.inf != res.sup && res.sup != std::nextafter(res.inf, INFINITY))
-			{
-				std::cerr << std::format("Too wide x: {}\n", x);
-				return 1;
-			}
-
-			if (WexpwIsPositive(res.inf, x) == WexpwIsPositive(res.sup, x))
-			{
-				std::cerr << std::format("Incorrect x: {}\n", x);
-				return 1;
-			}
+			if (TestPoint(x, res)) return 1;
 		}
 	}
 
@@ -176,6 +174,7 @@ int RunTest(int64_t branch)
 
 int main(int argc, char** argv)
 {
+#if 1
 	// Check number of arguments is correct
 	if (argc != 2)
 		ERROR("Test must have exactly one extra argument");
@@ -196,5 +195,18 @@ int main(int argc, char** argv)
 	case 2: return RunTest<double>(0);
 	case 3: return RunTest<double>(-1);
 	default: ERROR("Invalid test index");
+	}
+#endif
+
+	ReferenceWf evaluator;
+
+	float x = GetEmUp<float>();
+	for (size_t i = 0; x < INFINITY; i++, x = std::nextafter(x, INFINITY))
+	{
+		auto res = evaluator.W0(x);
+		if (TestPoint(x, res)) break;
+
+		if (i % 10'000 == 0)
+			std::cout << std::format("{}\n", x);
 	}
 }

@@ -53,10 +53,8 @@ void Profiling(size_t arrSize, size_t numIter)
 
 int main()
 {
-	double x = -6.166755821190387e-07;
-	std::cout << std::format("{:0<64b}\n", std::bit_cast<uint64_t>(x));
+	float x = -7.629351e-06;
 
-	ReferenceW evaluator;
-	auto[inf, sup] = evaluator.Wm1(x);
-	std::cout << std::format("{} - {}", inf, sup);
+	ReferenceWf evaluator;
+	evaluator.W0(x);
 }
