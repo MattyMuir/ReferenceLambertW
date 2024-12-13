@@ -172,9 +172,31 @@ int RunTest(int64_t branch)
 	return 0;
 }
 
+template <typename Ty>
+int ExhaustiveTest(int64_t branch)
+{
+	std::conditional_t<std::is_same_v<Ty, float>, ReferenceWf, ReferenceW> evaluator;
+
+	Ty start = GetEmUp<Ty>();
+	Ty end = (branch == 0) ? INFINITY : 0;
+
+	Ty x = start;
+	for (size_t i = 0; x < end; i++, x = std::nextafter(x, INFINITY))
+	{
+		decltype(evaluator.W0(Ty{})) res;
+		if (branch == 0)
+			res = evaluator.W0(x);
+		else
+			res = evaluator.Wm1(x);
+
+		if (TestPoint(x, res)) return 1;
+	}
+
+	return 0;
+}
+
 int main(int argc, char** argv)
 {
-#if 1
 	// Check number of arguments is correct
 	if (argc != 2)
 		ERROR("Test must have exactly one extra argument");
@@ -194,19 +216,8 @@ int main(int argc, char** argv)
 	case 1: return RunTest<float>(-1);
 	case 2: return RunTest<double>(0);
 	case 3: return RunTest<double>(-1);
+	case 4: return ExhaustiveTest<float>(0);
+	case 5: return ExhaustiveTest<float>(-1);
 	default: ERROR("Invalid test index");
-	}
-#endif
-
-	ReferenceWf evaluator;
-
-	float x = GetEmUp<float>();
-	for (size_t i = 0; x < INFINITY; i++, x = std::nextafter(x, INFINITY))
-	{
-		auto res = evaluator.W0(x);
-		if (TestPoint(x, res)) break;
-
-		if (i % 10'000 == 0)
-			std::cout << std::format("{}\n", x);
 	}
 }
