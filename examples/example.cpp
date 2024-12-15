@@ -53,8 +53,9 @@ void Profiling(size_t arrSize, size_t numIter)
 
 int main()
 {
-	float x = -7.629351e-06;
+	float x = -1e-45;
 
 	ReferenceWf evaluator;
-	evaluator.W0(x);
+	auto[inf, sup] = evaluator.W0(x);
+	std::cout << std::format("{} - {}\n", inf, sup);
 }

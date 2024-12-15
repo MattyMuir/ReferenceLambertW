@@ -15,8 +15,8 @@ constexpr size_t numCoeffs = pOrder + qOrder + 1;
 constexpr double yOffset = 0;
 
 constexpr double min = -0.3;
-constexpr double max = 7.38905609893;
-constexpr double step = 0.05;
+constexpr double max = 6.9035267829895019531;
+constexpr double step = 0.005;
 // ==================
 
 struct DerivState
@@ -218,23 +218,23 @@ int main()
 	}
 
 	// Initial parameters
-	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1  };
 	std::vector<double> scales{
 		0,
-		165.515615012,
-		1104.91533262,
-		2632.28394201,
-		2689.46435841,
-		1121.29227042,
-		153.337474222,
-		4.07732297707,
-		165.515615012,
-		1270.43104137,
-		3654.44214873,
-		4879.63187614,
-		3045.00582583,
-		794.87132517,
-		67.2285723193
+		152.91909281655765,
+		1024.8955781203358,
+		2455.09202423243,
+		2528.414754708975,
+		1066.824695457973,
+		148.54000057530493,
+		4.0539143590175835,
+		152.91909351081017,
+		1177.814723036858,
+		3403.528339686068,
+		4573.00254043458,
+		2878.9137364837616,
+		761.1479653139235,
+		65.5632478027466
 	};
 
 	if (ps.size() != scales.size() || ps.size() != numCoeffs)
@@ -254,7 +254,7 @@ int main()
 
 		// Take steps
 		for (size_t pi = 0; pi < numCoeffs; pi++)
-			ps[pi] -= derivs[pi] * 1e-12;
+			ps[pi] -= derivs[pi] * 1e-14;
 	}
 	stopThread.join();
 

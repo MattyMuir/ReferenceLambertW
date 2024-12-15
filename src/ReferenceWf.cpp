@@ -251,6 +251,8 @@ std::pair<float, float> ReferenceWf::W0Bracket(float x)
 	float high = add(w, err, FE_UPWARD);
 	high = std::max(high, -1.0f);
 
+	if (low == 0) low = 0;
+
 	return { low, high };
 }
 
