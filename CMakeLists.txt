@@ -9,6 +9,14 @@ cmake_minimum_required(VERSION 3.21)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Options
+set(WARNINGS OFF CACHE BOOL "Enables clang-tidy and warnings on clang-like compilers")
+if (WARNINGS)
+	add_compile_options("-Wall")
+    add_compile_options("-Wextra")
+    add_compile_options("-Wpedantic")
+    enable_clangtidy()
+endif()
+
 set(REFERENCEW_NO_ITERATOR_DEBUGGING OFF CACHE BOOL "Disable iterator debugging")
 if (REFERENCEW_NO_ITERATOR_DEBUGGING)
     add_compile_definitions(_HAS_ITERATOR_DEBUGGING=0)

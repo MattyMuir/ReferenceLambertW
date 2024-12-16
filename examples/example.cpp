@@ -35,9 +35,11 @@ void SpeedTest(size_t arrSize)
 void Profiling(size_t arrSize, size_t numIter)
 {
 	// Prepare test data
-	std::vector<double> data;
 	static std::mt19937_64 gen{ std::random_device{}() };
 	std::uniform_real_distribution<double> dist{ 10, 100 };
+
+	std::vector<double> data;
+	data.reserve(arrSize);
 	for (size_t i = 0; i < arrSize; i++)
 		data.push_back(dist(gen));
 

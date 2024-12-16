@@ -94,7 +94,7 @@ int TestPoint(Ty x, const std::conditional_t<std::is_same_v<Ty, float>, Interval
 }
 
 template <typename Ty>
-int RunTest(int64_t branch, std::function<Ty()> rand)
+int RunTest(int64_t branch, const std::function<Ty()>& rand)
 {
 	// === Parameters ===
 	static constexpr size_t Num = 500'000;

@@ -372,25 +372,23 @@ Sign ReferenceWf::GetMidpointSign(float x, float midpoint, bool useHighPrec)
 
 		return Sign::Inconclusive;
 	}
-	else
-	{
-		arb_set_d(xArb, x);
-		arb_set_d(mArb, midpoint);
-		arb_exp(yArb, mArb, 70);
-		arb_mul(yArb, yArb, mArb, 70);
-		arb_sub(yArb, yArb, xArb, 70);
 
-		bool isPos = arb_is_nonnegative(yArb);
-		bool isNeg = arb_is_nonpositive(yArb);
+	// High precision implementation
+	arb_set_d(xArb, x);
+	arb_set_d(mArb, midpoint);
+	arb_exp(yArb, mArb, 70);
+	arb_mul(yArb, yArb, mArb, 70);
+	arb_sub(yArb, yArb, xArb, 70);
 
-		if (isPos)
-			return Sign::Positive;
-		if (isNeg)
-			return Sign::Negative;
+	bool isPos = arb_is_nonnegative(yArb);
+	bool isNeg = arb_is_nonpositive(yArb);
 
-		return Sign::Inconclusive;
-	}
-	
+	if (isPos)
+		return Sign::Positive;
+	if (isNeg)
+		return Sign::Negative;
+
+	return Sign::Inconclusive;
 }
 
 Intervalf ReferenceWf::Bisection(float x, float low, float high, bool increasing)

@@ -28,8 +28,8 @@ private:
 	size_t numEvals = 0, numHighPrec = 0, maxBisections = 0, totalBisections = 0;
 #endif
 
-	std::pair<float, float> W0Bracket(float x);
-	std::pair<float, float> Wm1Bracket(float x);
+	static std::pair<float, float> W0Bracket(float x);
+	static std::pair<float, float> Wm1Bracket(float x);
 	Sign GetMidpointSign(float x, float midpoint, bool useHighPrec);
 	Intervalf Bisection(float x, float low, float high, bool increasing);
 };

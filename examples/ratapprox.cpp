@@ -9,14 +9,14 @@
 #include <ReferenceLambertW.h>
 
 // === Parameters ===
-constexpr size_t pOrder = 7;
-constexpr size_t qOrder = 7;
+constexpr size_t pOrder = 4;
+constexpr size_t qOrder = 3;
 constexpr size_t numCoeffs = pOrder + qOrder + 1;
 constexpr double yOffset = 0;
 
-constexpr double min = -0.3;
-constexpr double max = 6.9035267829895019531;
-constexpr double step = 0.005;
+constexpr double min = -0.4;
+constexpr double max = 89;
+constexpr double step = 0.09;
 // ==================
 
 struct DerivState
@@ -126,12 +126,8 @@ double Func(double x)
 {
 	//return Wm1(-exp(-0.5 * (x * x + 2)));
 	//return W0(exp(x));
-	return W0(x);
-}
-
-float fFunc(float x)
-{
-	return Func(x);
+	return W0(exp(x) - 1);
+	//return W0(x);
 }
 
 uint32_t ULPDistance(float a, float b)
@@ -147,57 +143,6 @@ uint32_t ULPDistance(float a, float b)
 		return aPunn - bPunn;
 
 	return (aPunn - 0x80000000) + bPunn;
-}
-
-std::vector<float> FloatRefine(const std::vector<double>& xs_, const std::vector<double>& dCoeffs)
-{
-	// === Parameters ===
-	static constexpr size_t NumSamples = 1'000'000;
-	static constexpr size_t NumIter = 1'000;
-	// ==================
-
-	static std::mt19937_64 gen{ std::random_device{}() };
-	std::uniform_real_distribution<float> branch{ 0.0f, 1.0f };
-	std::uniform_real_distribution<float> dist{ (float)min, (float)max };
-
-	// Round coefficients
-	std::vector<float> bestCoeffs;
-	for (double c : dCoeffs)
-		bestCoeffs.push_back((float)c);
-
-	uint32_t bestError = 10'000;
-	for (size_t i = 0; i < NumIter; i++)
-	{
-		std::vector<float> newCoeffs{ bestCoeffs };
-		for (float& coeff : newCoeffs)
-		{
-			if (branch(gen) < 0.1f)
-				coeff = std::nextafter(coeff, (gen() & 1) ? -INFINITY : INFINITY);
-		}
-
-		// Calculate max error
-		uint32_t maxError = 0;
-		for (size_t i = 0; i < NumSamples; i++)
-		{
-			float x = dist(gen);
-			float y = fFunc(x);
-
-			float approx = EvaluateRational(x, newCoeffs);
-			uint32_t err = ULPDistance(approx, y);
-
-			if (err > maxError)
-				maxError = err;
-		}
-
-		if (maxError < bestError)
-		{
-			bestError = maxError;
-			bestCoeffs = newCoeffs;
-			std::cout << "Error: " << maxError << '\n';
-		}
-	}
-
-	return bestCoeffs;
 }
 
 volatile bool keepRunning = true;
@@ -218,23 +163,16 @@ int main()
 	}
 
 	// Initial parameters
-	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1  };
+	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1 };
 	std::vector<double> scales{
 		0,
-		152.91909281655765,
-		1024.8955781203358,
-		2455.09202423243,
-		2528.414754708975,
-		1066.824695457973,
-		148.54000057530493,
-		4.0539143590175835,
-		152.91909351081017,
-		1177.814723036858,
-		3403.528339686068,
-		4573.00254043458,
-		2878.9137364837616,
-		761.1479653139235,
-		65.5632478027466
+		5.61305429923,
+		12.2697883039,
+		5.23198931002,
+		0.989322351701,
+		5.60420526645,
+		15.0540477255,
+		9.15270470155
 	};
 
 	if (ps.size() != scales.size() || ps.size() != numCoeffs)
@@ -254,7 +192,7 @@ int main()
 
 		// Take steps
 		for (size_t pi = 0; pi < numCoeffs; pi++)
-			ps[pi] -= derivs[pi] * 1e-14;
+			ps[pi] -= derivs[pi] * 1e-5;
 	}
 	stopThread.join();
 
@@ -271,22 +209,4 @@ int main()
 	for (size_t i = pOrder + 1; i < numCoeffs; i++)
 		std::cout << std::format("{}\n", coeffs[i]);
 	std::cout << "1\n";
-
-#if 0
-	std::cout << "=== Refining ===\n";
-	auto fCoeffs = FloatRefine(xs, coeffs);
-
-	// Print numerator coefficients
-	for (size_t i = 0; i < pOrder + 1; i++)
-		std::cout << std::format("{}\n", fCoeffs[i]);
-
-	std::cout << "\n\n";
-
-	// Print denominator coefficients
-	for (size_t i = pOrder + 1; i < numCoeffs; i++)
-		std::cout << std::format("{}\n", fCoeffs[i]);
-	std::cout << "1\n";
-#endif
-
-	std::cin.get();
 }

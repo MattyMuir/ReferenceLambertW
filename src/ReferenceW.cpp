@@ -19,8 +19,6 @@
 #include "halley.h"
 
 static constexpr double EM_UP = -0.3678794411714423; // (-1/e) rounded towards +Inf
-static constexpr double E2_DOWN = 5.43656365691809; // e*2 rounded towards -Inf
-static constexpr double E2_UP = 5.436563656918091; // e*2 rounded towards +Inf
 
 ReferenceW::ReferenceW()
 {
@@ -345,7 +343,6 @@ static inline double NearBranchWm1(double x)
 std::pair<double, double> ReferenceW::Wm1Bracket(double x)
 {
 	// === Constants ===
-	static constexpr double CM13_DOWN = -0.33333333333333337;
 	static constexpr double C23_DOWN = 0.6666666666666666;
 	static constexpr double C23_UP = 0.6666666666666667;
 	static constexpr double N = 50;
