@@ -1,7 +1,6 @@
 #include "../include/config.h"
 #include "ReferenceW.h"
 
-#include <cassert>
 #include <cfloat>
 #include <cmath>
 #include <cfenv>
@@ -56,7 +55,11 @@ Interval ReferenceW::W0(double x)
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, true);
-	assert(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY));
+	if (!(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY)))
+	{
+		std::cerr << std::format("Bracket too wide x: {}\n", x);
+		std::terminate();
+	}
 
 	// Restore rounding mode
 	fesetround(initialRnd);
@@ -82,7 +85,11 @@ Interval ReferenceW::Wm1(double x)
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, false);
-	assert(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY));
+	if (!(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY)))
+	{
+		std::cerr << std::format("Bracket too wide x: {}\n", x);
+		std::terminate();
+	}
 
 	// Restore rounding mode
 	fesetround(initialRnd);
@@ -382,12 +389,12 @@ std::pair<double, double> ReferenceW::Wm1Bracket(double x)
 		w = w * (1.0 + (zn / temp) * (temp2 - zn) / (temp2 - 2.0 * zn));
 	}
 
-
 	// Derivative Bound
 	double logUp = std::nextafter(Sleef_log_u10(-x), INFINITY);
 	double rtDown = sqrt(sub(-2, mul(logUp, 2, FE_UPWARD), FE_DOWNWARD), FE_DOWNWARD);
 	double denom = add(sub(C23_UP, rtDown, FE_UPWARD), mul(logUp, C23_DOWN, FE_UPWARD), FE_UPWARD);
 	double d = sub(1, div(1.0, denom, FE_DOWNWARD), FE_UPWARD);
+	if (d < 0) d = 6.534131e+7;
 
 	// Del Bound
 	double del;

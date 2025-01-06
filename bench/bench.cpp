@@ -9,8 +9,8 @@
 #include "Timer.h"
 
 // === Bench Config ===
-#define BRANCH W0
-using BenchTy = float;
+#define BRANCH Wm1
+using BenchTy = double;
 // ====================
 
 #define DOMAP(x) ExpMap##x
@@ -97,7 +97,7 @@ void Bench()
 	// === Parameters ===
 	static constexpr size_t Num = 10'000;
 	static constexpr size_t Repeats = 30;
-	BenchTy binMin = -80;
+	BenchTy binMin = -35.5;
 	BenchTy binMax = 10;
 	BenchTy binWidth = 0.5;
 	// ==================
@@ -110,7 +110,7 @@ void Bench()
 		BenchTy max = min + binWidth;
 		double time = 0.0;
 		for (size_t i = 0; i < Repeats; i++)
-			time += RunBench(min, max, std::exp, Num);
+			time += RunBench(min, max, ExpMapWm1, Num);
 		time /= Repeats;
 
 		file << std::format("{:.3f},{:.3f},{:.10f}\n", min, max, time);

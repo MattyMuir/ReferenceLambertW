@@ -1,5 +1,3 @@
-#include <cassert>
-
 #include <iostream>
 #include <vector>
 #include <format>
@@ -9,14 +7,14 @@
 #include <ReferenceLambertW.h>
 
 // === Parameters ===
-constexpr size_t pOrder = 4;
-constexpr size_t qOrder = 3;
+constexpr size_t pOrder = 3;
+constexpr size_t qOrder = 1;
 constexpr size_t numCoeffs = pOrder + qOrder + 1;
 constexpr double yOffset = 0;
 
-constexpr double min = -0.4;
-constexpr double max = 89;
-constexpr double step = 0.09;
+constexpr double min = 0.556177417722;
+constexpr double max = 27.2;
+constexpr double step = 0.01;
 // ==================
 
 struct DerivState
@@ -125,8 +123,9 @@ double Wm1(double x)
 double Func(double x)
 {
 	//return Wm1(-exp(-0.5 * (x * x + 2)));
+	return Wm1(-exp(-x * x - 1));
 	//return W0(exp(x));
-	return W0(exp(x) - 1);
+	//return W0(exp(x) - 1);
 	//return W0(x);
 }
 
@@ -163,16 +162,13 @@ int main()
 	}
 
 	// Initial parameters
-	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1, 1 };
+	std::vector<double> ps{ 1, 1, 1, 1, 1 };
 	std::vector<double> scales{
-		0,
-		5.61305429923,
-		12.2697883039,
-		5.23198931002,
-		0.989322351701,
-		5.60420526645,
-		15.0540477255,
-		9.15270470155
+		-3.83613177572,
+		-6.42176777593,
+		-3.95034683355,
+		-0.998585427419,
+		3.83372009727
 	};
 
 	if (ps.size() != scales.size() || ps.size() != numCoeffs)
@@ -192,7 +188,7 @@ int main()
 
 		// Take steps
 		for (size_t pi = 0; pi < numCoeffs; pi++)
-			ps[pi] -= derivs[pi] * 1e-5;
+			ps[pi] -= derivs[pi] * 1e-8;
 	}
 	stopThread.join();
 
