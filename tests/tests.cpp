@@ -149,7 +149,7 @@ int RunTest(int64_t branch)
 
 	// Near branch test
 	{
-		Ty low = std::is_same_v<Ty, float> ? -15 : -35;
+		Ty low = std::is_same_v<Ty, float> ? -18.021828 : -38.123094930796995;
 		Ty high = -1;
 
 		std::uniform_real_distribution<Ty> dist{ low, high };
