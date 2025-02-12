@@ -54,7 +54,7 @@ Intervalf ReferenceWf::W0(float x)
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, true);
-	if (!(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY)))
+	if (ret.inf != ret.sup && ret.sup != std::nextafter(ret.inf, INFINITY))
 	{
 		std::cerr << std::format("Bracket too wide x: {}\n", x);
 		std::terminate();
@@ -84,7 +84,7 @@ Intervalf ReferenceWf::Wm1(float x)
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, false);
-	if (!(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY)))
+	if (ret.inf != ret.sup && ret.sup != std::nextafter(ret.inf, INFINITY))
 	{
 		std::cerr << std::format("Bracket too wide x: {}\n", x);
 		std::terminate();

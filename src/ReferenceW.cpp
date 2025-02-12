@@ -55,7 +55,7 @@ Interval ReferenceW::W0(double x)
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, true);
-	if (!(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY)))
+	if (ret.inf != ret.sup && ret.sup != std::nextafter(ret.inf, INFINITY))
 	{
 		std::cerr << std::format("Bracket too wide x: {}\n", x);
 		std::terminate();
@@ -85,7 +85,7 @@ Interval ReferenceW::Wm1(double x)
 
 	// === Bisection ===
 	auto ret = Bisection(x, low, high, false);
-	if (!(ret.inf == ret.sup || ret.sup == std::nextafter(ret.inf, INFINITY)))
+	if (ret.inf != ret.sup && ret.sup != std::nextafter(ret.inf, INFINITY))
 	{
 		std::cerr << std::format("Bracket too wide x: {}\n", x);
 		std::terminate();

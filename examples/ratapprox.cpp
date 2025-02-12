@@ -8,13 +8,13 @@
 
 // === Parameters ===
 constexpr size_t pOrder = 3;
-constexpr size_t qOrder = 1;
+constexpr size_t qOrder = 3;
 constexpr size_t numCoeffs = pOrder + qOrder + 1;
 constexpr double yOffset = 0;
 
-constexpr double min = 0.556177417722;
-constexpr double max = 27.2;
-constexpr double step = 0.01;
+constexpr double min = -0.28;
+constexpr double max = 7.34;
+constexpr double step = 0.0051;
 // ==================
 
 struct DerivState
@@ -123,10 +123,11 @@ double Wm1(double x)
 double Func(double x)
 {
 	//return Wm1(-exp(-0.5 * (x * x + 2)));
-	return Wm1(-exp(-x * x - 1));
+	//return Wm1(-exp(-x * x - 1));
 	//return W0(exp(x));
 	//return W0(exp(x) - 1);
 	//return W0(x);
+	return (W0(x) - x) / (x * x);
 }
 
 uint32_t ULPDistance(float a, float b)
@@ -162,13 +163,15 @@ int main()
 	}
 
 	// Initial parameters
-	std::vector<double> ps{ 1, 1, 1, 1, 1 };
+	std::vector<double> ps{ 1, 1, 1, 1, 1, 1, 1 };
 	std::vector<double> scales{
-		-3.83613177572,
-		-6.42176777593,
-		-3.95034683355,
-		-0.998585427419,
-		3.83372009727
+		-0.811183167505,
+		-2.09065201806,
+		-0.919464181645,
+		-0.00253967039523,
+		0.811104259067,
+		3.30625740088,
+		3.71791903293
 	};
 
 	if (ps.size() != scales.size() || ps.size() != numCoeffs)
